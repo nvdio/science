@@ -1,1 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermodynamic Information-Field Model</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #1a237e;
+            --secondary: #283593;
+            --accent: #3949ab;
+            --light: #e8eaf6;
+            --dark: #0d1440;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --danger: #f44336;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card-title {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--light);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 2rem;
+        }
+        
+        .input-group {
+            margin-bottom: 1rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        button {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: var(--secondary);
+        }
+        
+        .results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 1.5rem;
+        }
+        
+        .result-item {
+            background: var(--light);
+            padding: 1rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .result-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .phase-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin: 1.5rem 0;
+        }
+        
+        .phase {
+            text-align: center;
+            padding: 0.5rem;
+            border-radius: 4px;
+            flex: 1;
+            margin: 0 5px;
+            transition: all 0.3s;
+        }
+        
+        .phase.active {
+            background-color: var(--accent);
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        .phase.accumulation {
+            background-color: #e3f2fd;
+        }
+        
+        .phase.release {
+            background-color: #e8f5e9;
+        }
+        
+        .phase.exhaustion {
+            background-color: #fff3e0;
+        }
+        
+        .phase.reset {
+            background-color: #fce4ec;
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin: 1.5rem 0;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 1rem;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .phase-indicator {
+                flex-direction: column;
+            }
+            
+            .phase {
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Thermodynamic Information-Field Model</h1>
+            <p class="subtitle">A computational implementation of stock price cycles based on information thermodynamics</p>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="card">
+            <h2 class="card-title">Model Overview</h2>
+            <p>This implementation models stock markets as thermodynamic systems where:</p>
+            <ul>
+                <li>Each share acts as an information "charge" creating a market information field</li>
+                <li>Price changes are driven by the field and interpreted as stock-market work</li>
+                <li>Highs and lows are reservoirs of invisible information-energy</li>
+                <li>Price trends convert potential information-energy into kinetic market motion</li>
+            </ul>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h2 class="card-title">Input Parameters</h2>
+                
+                <div class="input-group">
+                    <label for="stockPrice">Current Price (P<sub>t</sub>)</label>
+                    <input type="number" id="stockPrice" value="100" step="0.01">
+                </div>
+                
+                <div class="input-group">
+                    <label for="fairValue">Fair Value Estimate (V<sub>t</sub>*)</label>
+                    <input type="number" id="fairValue" value="110" step="0.01">
+                </div>
+                
+                <div class="input-group">
+                    <label for="highPrice">Recent High (H<sub>t</sub>)</label>
+                    <input type="number" id="highPrice" value="120" step="0.01">
+                </div>
+                
+                <div class="input-group">
+                    <label for="lowPrice">Recent Low (L<sub>t</sub>)</label>
+                    <input type="number" id="lowPrice" value="90" step="0.01">
+                </div>
+                
+                <div class="input-group">
+                    <label for="volume">Volume (V<sub>t</sub>)</label>
+                    <input type="number" id="volume" value="1000000" step="1000">
+                </div>
+                
+                <div class="input-group">
+                    <label for="volatility">Volatility (σ<sub>t</sub>)</label>
+                    <input type="number" id="volatility" value="0.2" step="0.01" min="0" max="1">
+                </div>
+                
+                <div class="input-group">
+                    <label for="orderFlow">Order Flow Imbalance (OF<sub>t</sub>)</label>
+                    <input type="number" id="orderFlow" value="0.05" step="0.01" min="-1" max="1">
+                </div>
+                
+                <div class="input-group">
+                    <label for="depth">Order Book Depth</label>
+                    <input type="number" id="depth" value="50000" step="1000">
+                </div>
+                
+                <button id="calculateBtn">Calculate Information Metrics</button>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">Results & Analysis</h2>
+                
+                <div class="results">
+                    <div class="result-item">
+                        <div class="result-value" id="mispricing">0.00</div>
+                        <div class="result-label">Mispricing (D<sub>t</sub>)</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-value" id="rangePosition">0.00</div>
+                        <div class="result-label">Range Position (R<sub>t</sub>)</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-value" id="infoPotential">0.00</div>
+                        <div class="result-label">Information Potential (Φ<sub>t</sub>)</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-value" id="fieldIntensity">0.00</div>
+                        <div class="result-label">Field Intensity (E<sub>t</sub>)</div>
+                    </div>
+                </div>
+                
+                <h3 class="card-title" style="margin-top: 1.5rem;">Market Cycle Phase</h3>
+                
+                <div class="phase-indicator">
+                    <div class="phase accumulation" id="phaseAccumulation">
+                        <h4>Accumulation</h4>
+                        <p>Cold Potential</p>
+                    </div>
+                    <div class="phase release" id="phaseRelease">
+                        <h4>Release</h4>
+                        <p>Hot Kinetic</p>
+                    </div>
+                    <div class="phase exhaustion" id="phaseExhaustion">
+                        <h4>Exhaustion</h4>
+                        <p>Hot but Thinning</p>
+                    </div>
+                    <div class="phase reset" id="phaseReset">
+                        <h4>Reset</h4>
+                        <p>Cooling</p>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="cycleChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2 class="card-title">Model Explanation</h2>
+            
+            <h3>Three Universal Laws</h3>
+            <ol>
+                <li><strong>Flow:</strong> Information-energy moves from concentrated to dispersed states</li>
+                <li><strong>Equilibrium:</strong> Systems seek informational balance</li>
+                <li><strong>Conservation:</strong> Information changes form but is not destroyed</li>
+            </ol>
+            
+            <h3>Key Concepts</h3>
+            <ul>
+                <li><strong>Information Potential (Φ<sub>t</sub>):</strong> Function of mispricing, liquidity, volatility, and order book imbalance</li>
+                <li><strong>Field Intensity (E<sub>t</sub>):</strong> Combines order-flow imbalance, volatility, and volume</li>
+                <li><strong>Market Force (F<sub>t</sub>):</strong> Product of sensitivity and field intensity that drives price changes</li>
+            </ul>
+            
+            <h3>Trading Implications</h3>
+            <p>Instead of asking "What news caused this move?", the model suggests:</p>
+            <ul>
+                <li>Identify where information is most concentrated</li>
+                <li>Locate steep information gradients where the field can do work</li>
+                <li>Determine the current cycle phase to time entries and exits</li>
+            </ul>
+        </div>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>Based on "A Thermodynamic Information-Field Model of Stock Price Cycles" by Louis Grenon</p>
+            <p>Implementation for educational and research purposes</p>
+        </div>
+    </footer>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const calculateBtn = document.getElementById('calculateBtn');
+            const cycleChart = document.getElementById('cycleChart').getContext('2d');
+            
+            let chart;
+            
+            // Initialize chart
+            initializeChart();
+            
+            calculateBtn.addEventListener('click', function() {
+                calculateMetrics();
+            });
+            
+            function calculateMetrics() {
+                // Get input values
+                const price = parseFloat(document.getElementById('stockPrice').value);
+                const fairValue = parseFloat(document.getElementById('fairValue').value);
+                const high = parseFloat(document.getElementById('highPrice').value);
+                const low = parseFloat(document.getElementById('lowPrice').value);
+                const volume = parseFloat(document.getElementById('volume').value);
+                const volatility = parseFloat(document.getElementById('volatility').value);
+                const orderFlow = parseFloat(document.getElementById('orderFlow').value);
+                const depth = parseFloat(document.getElementById('depth').value);
+                
+                // Calculate metrics
+                const mispricing = price - fairValue;
+                const rangePosition = (price - low) / (high - low + 0.0001); // Add small epsilon to avoid division by zero
+                
+                // Information potential (simplified formula from paper)
+                const alpha = 0.5, beta = 0.3, gamma = 0.2;
+                const infoPotential = alpha * Math.abs(mispricing) + beta * (1 / depth) + gamma * volatility;
+                
+                // Field intensity (simplified formula from paper)
+                const delta1 = 0.4, delta2 = 0.4, delta3 = 0.2;
+                const fieldIntensity = delta1 * orderFlow + delta2 * volatility + delta3 * Math.log(1 + volume);
+                
+                // Update UI with results
+                document.getElementById('mispricing').textContent = mispricing.toFixed(2);
+                document.getElementById('rangePosition').textContent = rangePosition.toFixed(2);
+                document.getElementById('infoPotential').textContent = infoPotential.toFixed(2);
+                document.getElementById('fieldIntensity').textContent = fieldIntensity.toFixed(2);
+                
+                // Determine cycle phase
+                determineCyclePhase(rangePosition, infoPotential, fieldIntensity);
+                
+                // Update chart
+                updateChart(rangePosition, infoPotential, fieldIntensity);
+            }
+            
+            function determineCyclePhase(rangePosition, infoPotential, fieldIntensity) {
+                // Reset all phases
+                document.querySelectorAll('.phase').forEach(phase => {
+                    phase.classList.remove('active');
+                });
+                
+                // Determine phase based on metrics
+                if (rangePosition < 0.3 && infoPotential > 0.7) {
+                    document.getElementById('phaseAccumulation').classList.add('active');
+                } else if (rangePosition > 0.3 && rangePosition < 0.7 && fieldIntensity > 0.5) {
+                    document.getElementById('phaseRelease').classList.add('active');
+                } else if (rangePosition > 0.7 && infoPotential < 0.5 && fieldIntensity > 0.3) {
+                    document.getElementById('phaseExhaustion').classList.add('active');
+                } else {
+                    document.getElementById('phaseReset').classList.add('active');
+                }
+            }
+            
+            function initializeChart() {
+                chart = new Chart(cycleChart, {
+                    type: 'line',
+                    data: {
+                        labels: ['Accumulation', 'Release', 'Exhaustion', 'Reset'],
+                        datasets: [
+                            {
+                                label: 'Information Potential',
+                                data: [0, 0, 0, 0],
+                                borderColor: '#3949ab',
+                                backgroundColor: 'rgba(57, 73, 171, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            },
+                            {
+                                label: 'Field Intensity',
+                                data: [0, 0, 0, 0],
+                                borderColor: '#f44336',
+                                backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 1
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Market Cycle Dynamics'
+                            }
+                        }
+                    }
+                });
+            }
+            
+            function updateChart(rangePosition, infoPotential, fieldIntensity) {
+                // Generate sample data based on current metrics
+                const phaseData = {
+                    accumulation: {
+                        potential: infoPotential * 0.8,
+                        intensity: fieldIntensity * 0.3
+                    },
+                    release: {
+                        potential: infoPotential * 0.6,
+                        intensity: fieldIntensity * 0.9
+                    },
+                    exhaustion: {
+                        potential: infoPotential * 0.4,
+                        intensity: fieldIntensity * 0.7
+                    },
+                    reset: {
+                        potential: infoPotential * 0.7,
+                        intensity: fieldIntensity * 0.2
+                    }
+                };
+                
+                // Update chart data
+                chart.data.datasets[0].data = [
+                    phaseData.accumulation.potential,
+                    phaseData.release.potential,
+                    phaseData.exhaustion.potential,
+                    phaseData.reset.potential
+                ];
+                
+                chart.data.datasets[1].data = [
+                    phaseData.accumulation.intensity,
+                    phaseData.release.intensity,
+                    phaseData.exhaustion.intensity,
+                    phaseData.reset.intensity
+                ];
+                
+                chart.update();
+            }
+            
+            // Calculate initial metrics on page load
+            calculateMetrics();
+        });
+    </script>
+</body>
+</html>
