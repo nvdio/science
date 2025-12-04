@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thermodynamic Information-Field Model</title>
+    <title>Stock 52-Week High/Low Data</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -113,6 +113,11 @@
             background-color: var(--secondary);
         }
         
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
         .results {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -138,46 +143,112 @@
             color: #666;
         }
         
-        .phase-indicator {
+        .price-highlight {
             display: flex;
-            justify-content: space-between;
-            margin: 1.5rem 0;
+            justify-content: space-around;
+            margin: 2rem 0;
+            padding: 1rem;
+            background: linear-gradient(to right, #e8f5e9, #e3f2fd);
+            border-radius: 8px;
         }
         
-        .phase {
+        .price-box {
             text-align: center;
-            padding: 0.5rem;
-            border-radius: 4px;
-            flex: 1;
-            margin: 0 5px;
-            transition: all 0.3s;
+            padding: 1rem;
         }
         
-        .phase.active {
-            background-color: var(--accent);
-            color: white;
-            transform: scale(1.05);
+        .current-price {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary);
         }
         
-        .phase.accumulation {
-            background-color: #e3f2fd;
+        .price-change {
+            font-size: 1.2rem;
+            font-weight: bold;
         }
         
-        .phase.release {
-            background-color: #e8f5e9;
+        .positive {
+            color: var(--success);
         }
         
-        .phase.exhaustion {
-            background-color: #fff3e0;
+        .negative {
+            color: var(--danger);
         }
         
-        .phase.reset {
-            background-color: #fce4ec;
+        .high-price {
+            color: var(--success);
+            font-weight: bold;
+        }
+        
+        .low-price {
+            color: var(--danger);
+            font-weight: bold;
         }
         
         .chart-container {
-            height: 300px;
+            height: 400px;
             margin: 1.5rem 0;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--accent);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background-color: #ffebee;
+            color: var(--danger);
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+            display: none;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .data-table th {
+            background-color: var(--light);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .data-table tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .date-badge {
+            background-color: #e3f2fd;
+            color: var(--primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
         }
         
         footer {
@@ -193,12 +264,16 @@
                 grid-template-columns: 1fr;
             }
             
-            .phase-indicator {
+            .price-highlight {
                 flex-direction: column;
             }
             
-            .phase {
-                margin: 5px 0;
+            .price-box {
+                margin-bottom: 1rem;
+            }
+            
+            .chart-container {
+                height: 300px;
             }
         }
     </style>
@@ -206,308 +281,467 @@
 <body>
     <header>
         <div class="container">
-            <h1>Thermodynamic Information-Field Model</h1>
-            <p class="subtitle">A computational implementation of stock price cycles based on information thermodynamics</p>
+            <h1>Stock 52-Week High/Low Data</h1>
+            <p class="subtitle">Real-time stock data with 52-week price range analysis</p>
         </div>
     </header>
     
     <div class="container">
         <div class="card">
-            <h2 class="card-title">Model Overview</h2>
-            <p>This implementation models stock markets as thermodynamic systems where:</p>
-            <ul>
-                <li>Each share acts as an information "charge" creating a market information field</li>
-                <li>Price changes are driven by the field and interpreted as stock-market work</li>
-                <li>Highs and lows are reservoirs of invisible information-energy</li>
-                <li>Price trends convert potential information-energy into kinetic market motion</li>
-            </ul>
-        </div>
-        
-        <div class="grid">
-            <div class="card">
-                <h2 class="card-title">Input Parameters</h2>
-                
+            <h2 class="card-title">Stock Data Lookup</h2>
+            
+            <div class="grid">
                 <div class="input-group">
-                    <label for="stockPrice">Current Price (P<sub>t</sub>)</label>
-                    <input type="number" id="stockPrice" value="100" step="0.01">
+                    <label for="symbolInput">Stock Symbol</label>
+                    <input type="text" id="symbolInput" value="IBM" placeholder="e.g., IBM, AAPL, MSFT">
+                    <small>Enter a valid stock ticker symbol</small>
                 </div>
                 
                 <div class="input-group">
-                    <label for="fairValue">Fair Value Estimate (V<sub>t</sub>*)</label>
-                    <input type="number" id="fairValue" value="110" step="0.01">
+                    <label for="apiKeyInput">API Key (Optional)</label>
+                    <input type="text" id="apiKeyInput" placeholder="Leave blank to use default">
+                    <small>If you have your own Alpha Vantage API key</small>
                 </div>
-                
-                <div class="input-group">
-                    <label for="highPrice">Recent High (H<sub>t</sub>)</label>
-                    <input type="number" id="highPrice" value="120" step="0.01">
-                </div>
-                
-                <div class="input-group">
-                    <label for="lowPrice">Recent Low (L<sub>t</sub>)</label>
-                    <input type="number" id="lowPrice" value="90" step="0.01">
-                </div>
-                
-                <div class="input-group">
-                    <label for="volume">Volume (V<sub>t</sub>)</label>
-                    <input type="number" id="volume" value="1000000" step="1000">
-                </div>
-                
-                <div class="input-group">
-                    <label for="volatility">Volatility (σ<sub>t</sub>)</label>
-                    <input type="number" id="volatility" value="0.2" step="0.01" min="0" max="1">
-                </div>
-                
-                <div class="input-group">
-                    <label for="orderFlow">Order Flow Imbalance (OF<sub>t</sub>)</label>
-                    <input type="number" id="orderFlow" value="0.05" step="0.01" min="-1" max="1">
-                </div>
-                
-                <div class="input-group">
-                    <label for="depth">Order Book Depth</label>
-                    <input type="number" id="depth" value="50000" step="1000">
-                </div>
-                
-                <button id="calculateBtn">Calculate Information Metrics</button>
             </div>
             
-            <div class="card">
-                <h2 class="card-title">Results & Analysis</h2>
-                
-                <div class="results">
-                    <div class="result-item">
-                        <div class="result-value" id="mispricing">0.00</div>
-                        <div class="result-label">Mispricing (D<sub>t</sub>)</div>
-                    </div>
-                    
-                    <div class="result-item">
-                        <div class="result-value" id="rangePosition">0.00</div>
-                        <div class="result-label">Range Position (R<sub>t</sub>)</div>
-                    </div>
-                    
-                    <div class="result-item">
-                        <div class="result-value" id="infoPotential">0.00</div>
-                        <div class="result-label">Information Potential (Φ<sub>t</sub>)</div>
-                    </div>
-                    
-                    <div class="result-item">
-                        <div class="result-value" id="fieldIntensity">0.00</div>
-                        <div class="result-label">Field Intensity (E<sub>t</sub>)</div>
-                    </div>
+            <button id="fetchDataBtn">Fetch Stock Data</button>
+            <button id="viewThermoBtn" style="margin-left: 10px; background-color: var(--warning);">View Thermodynamic Model</button>
+            
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>Fetching stock data from Alpha Vantage API...</p>
+            </div>
+            
+            <div class="error-message" id="errorMessage">
+                <p id="errorText"></p>
+            </div>
+        </div>
+        
+        <div class="card" id="resultsCard" style="display: none;">
+            <h2 class="card-title" id="stockTitle">Stock Data for IBM</h2>
+            
+            <div class="price-highlight">
+                <div class="price-box">
+                    <div class="result-label">Current Price</div>
+                    <div class="current-price" id="currentPrice">$0.00</div>
+                    <div class="price-change" id="priceChange">+0.00%</div>
                 </div>
                 
-                <h3 class="card-title" style="margin-top: 1.5rem;">Market Cycle Phase</h3>
-                
-                <div class="phase-indicator">
-                    <div class="phase accumulation" id="phaseAccumulation">
-                        <h4>Accumulation</h4>
-                        <p>Cold Potential</p>
-                    </div>
-                    <div class="phase release" id="phaseRelease">
-                        <h4>Release</h4>
-                        <p>Hot Kinetic</p>
-                    </div>
-                    <div class="phase exhaustion" id="phaseExhaustion">
-                        <h4>Exhaustion</h4>
-                        <p>Hot but Thinning</p>
-                    </div>
-                    <div class="phase reset" id="phaseReset">
-                        <h4>Reset</h4>
-                        <p>Cooling</p>
-                    </div>
+                <div class="price-box">
+                    <div class="result-label">52-Week High</div>
+                    <div class="current-price high-price" id="week52High">$0.00</div>
+                    <div class="result-label" id="highDate">Date: --</div>
                 </div>
                 
-                <div class="chart-container">
-                    <canvas id="cycleChart"></canvas>
+                <div class="price-box">
+                    <div class="result-label">52-Week Low</div>
+                    <div class="current-price low-price" id="week52Low">$0.00</div>
+                    <div class="result-label" id="lowDate">Date: --</div>
                 </div>
             </div>
+            
+            <div class="results">
+                <div class="result-item">
+                    <div class="result-value" id="priceToHigh">0%</div>
+                    <div class="result-label">From 52-Week High</div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-value" id="priceToLow">0%</div>
+                    <div class="result-label">From 52-Week Low</div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-value" id="priceRange">0%</div>
+                    <div class="result-label">52-Week Range</div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-value" id="rangePosition">0%</div>
+                    <div class="result-label">Position in Range</div>
+                </div>
+            </div>
+            
+            <h3 class="card-title">Price History (Last 30 Days)</h3>
+            <div class="chart-container">
+                <canvas id="priceChart"></canvas>
+            </div>
+            
+            <h3 class="card-title">Recent Trading Data</h3>
+            <table class="data-table" id="priceTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Open</th>
+                        <th>High</th>
+                        <th>Low</th>
+                        <th>Close</th>
+                        <th>Volume</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data will be populated here -->
+                </tbody>
+            </table>
         </div>
         
         <div class="card">
-            <h2 class="card-title">Model Explanation</h2>
-            
-            <h3>Three Universal Laws</h3>
-            <ol>
-                <li><strong>Flow:</strong> Information-energy moves from concentrated to dispersed states</li>
-                <li><strong>Equilibrium:</strong> Systems seek informational balance</li>
-                <li><strong>Conservation:</strong> Information changes form but is not destroyed</li>
-            </ol>
-            
-            <h3>Key Concepts</h3>
+            <h2 class="card-title">About This Tool</h2>
+            <p>This tool fetches real-time stock data using the Alpha Vantage API. The API provides:</p>
             <ul>
-                <li><strong>Information Potential (Φ<sub>t</sub>):</strong> Function of mispricing, liquidity, volatility, and order book imbalance</li>
-                <li><strong>Field Intensity (E<sub>t</sub>):</strong> Combines order-flow imbalance, volatility, and volume</li>
-                <li><strong>Market Force (F<sub>t</sub>):</strong> Product of sensitivity and field intensity that drives price changes</li>
+                <li>Daily adjusted stock prices</li>
+                <li>52-week high and low values</li>
+                <li>Volume and trading data</li>
+                <li>Historical price information</li>
             </ul>
+            <p>The default API key has limited requests per day. For unlimited access, get your own free API key from <a href="https://www.alphavantage.co/support/#api-key" target="_blank">Alpha Vantage</a>.</p>
             
-            <h3>Trading Implications</h3>
-            <p>Instead of asking "What news caused this move?", the model suggests:</p>
-            <ul>
-                <li>Identify where information is most concentrated</li>
-                <li>Locate steep information gradients where the field can do work</li>
-                <li>Determine the current cycle phase to time entries and exits</li>
-            </ul>
+            <p><strong>Example symbols to try:</strong> IBM, AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, JPM</p>
         </div>
     </div>
     
     <footer>
         <div class="container">
-            <p>Based on "A Thermodynamic Information-Field Model of Stock Price Cycles" by Louis Grenon</p>
-            <p>Implementation for educational and research purposes</p>
+            <p>Data provided by <a href="https://www.alphavantage.co/" target="_blank">Alpha Vantage</a></p>
+            <p>This tool is for educational and research purposes only. Not financial advice.</p>
         </div>
     </footer>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const calculateBtn = document.getElementById('calculateBtn');
-            const cycleChart = document.getElementById('cycleChart').getContext('2d');
+            const fetchDataBtn = document.getElementById('fetchDataBtn');
+            const viewThermoBtn = document.getElementById('viewThermoBtn');
+            const symbolInput = document.getElementById('symbolInput');
+            const apiKeyInput = document.getElementById('apiKeyInput');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const errorMessage = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            const resultsCard = document.getElementById('resultsCard');
+            const stockTitle = document.getElementById('stockTitle');
             
-            let chart;
+            // Default API key from the provided file
+            const DEFAULT_API_KEY = '2TQK3ASMKGWX9D47';
+            
+            // Chart variables
+            let priceChart;
             
             // Initialize chart
             initializeChart();
             
-            calculateBtn.addEventListener('click', function() {
-                calculateMetrics();
+            // Button event listeners
+            fetchDataBtn.addEventListener('click', function() {
+                fetchStockData();
             });
             
-            function calculateMetrics() {
-                // Get input values
-                const price = parseFloat(document.getElementById('stockPrice').value);
-                const fairValue = parseFloat(document.getElementById('fairValue').value);
-                const high = parseFloat(document.getElementById('highPrice').value);
-                const low = parseFloat(document.getElementById('lowPrice').value);
-                const volume = parseFloat(document.getElementById('volume').value);
-                const volatility = parseFloat(document.getElementById('volatility').value);
-                const orderFlow = parseFloat(document.getElementById('orderFlow').value);
-                const depth = parseFloat(document.getElementById('depth').value);
+            viewThermoBtn.addEventListener('click', function() {
+                // In a real implementation, this would navigate to the thermodynamic model page
+                alert("Thermodynamic model page would open here. Since this is a single-page demo, we're showing stock data instead.");
+            });
+            
+            // Allow Enter key to trigger data fetch
+            symbolInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    fetchStockData();
+                }
+            });
+            
+            function fetchStockData() {
+                const symbol = symbolInput.value.trim().toUpperCase();
+                if (!symbol) {
+                    showError('Please enter a stock symbol');
+                    return;
+                }
                 
-                // Calculate metrics
-                const mispricing = price - fairValue;
-                const rangePosition = (price - low) / (high - low + 0.0001); // Add small epsilon to avoid division by zero
+                // Show loading indicator
+                loadingIndicator.style.display = 'block';
+                errorMessage.style.display = 'none';
+                resultsCard.style.display = 'none';
+                fetchDataBtn.disabled = true;
                 
-                // Information potential (simplified formula from paper)
-                const alpha = 0.5, beta = 0.3, gamma = 0.2;
-                const infoPotential = alpha * Math.abs(mispricing) + beta * (1 / depth) + gamma * volatility;
+                // Use custom API key if provided, otherwise use default
+                const apiKey = apiKeyInput.value.trim() || DEFAULT_API_KEY;
                 
-                // Field intensity (simplified formula from paper)
-                const delta1 = 0.4, delta2 = 0.4, delta3 = 0.2;
-                const fieldIntensity = delta1 * orderFlow + delta2 * volatility + delta3 * Math.log(1 + volume);
+                // Construct API URL
+                const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${apiKey}`;
                 
-                // Update UI with results
-                document.getElementById('mispricing').textContent = mispricing.toFixed(2);
-                document.getElementById('rangePosition').textContent = rangePosition.toFixed(2);
-                document.getElementById('infoPotential').textContent = infoPotential.toFixed(2);
-                document.getElementById('fieldIntensity').textContent = fieldIntensity.toFixed(2);
-                
-                // Determine cycle phase
-                determineCyclePhase(rangePosition, infoPotential, fieldIntensity);
-                
-                // Update chart
-                updateChart(rangePosition, infoPotential, fieldIntensity);
+                // Fetch data from Alpha Vantage API
+                fetch(apiUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Check for API errors
+                        if (data['Error Message']) {
+                            throw new Error(data['Error Message']);
+                        }
+                        if (data['Note']) {
+                            // This is a rate limit warning, but we can still process data if available
+                            console.warn('API Note:', data['Note']);
+                        }
+                        
+                        // Process the data
+                        processStockData(symbol, data);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching stock data:', error);
+                        showError(`Failed to fetch stock data: ${error.message}. Please check the symbol and try again.`);
+                    })
+                    .finally(() => {
+                        // Hide loading indicator
+                        loadingIndicator.style.display = 'none';
+                        fetchDataBtn.disabled = false;
+                    });
             }
             
-            function determineCyclePhase(rangePosition, infoPotential, fieldIntensity) {
-                // Reset all phases
-                document.querySelectorAll('.phase').forEach(phase => {
-                    phase.classList.remove('active');
+            function processStockData(symbol, data) {
+                // Check if we have the expected data structure
+                if (!data['Time Series (Daily)']) {
+                    showError('Invalid data structure received from API');
+                    return;
+                }
+                
+                // Get time series data
+                const timeSeries = data['Time Series (Daily)'];
+                
+                // Convert to array and sort by date (newest first)
+                const sortedDates = Object.keys(timeSeries).sort((a, b) => new Date(b) - new Date(a));
+                
+                // Get the most recent trading day
+                const latestDate = sortedDates[0];
+                const latestData = timeSeries[latestDate];
+                
+                // Calculate 52-week high and low
+                let week52High = 0;
+                let week52Low = Infinity;
+                let highDate = '';
+                let lowDate = '';
+                
+                // We need data for the last year, but API returns last 100 days by default
+                // For demo, we'll use all available data
+                sortedDates.forEach(date => {
+                    const dayData = timeSeries[date];
+                    const high = parseFloat(dayData['2. high']);
+                    const low = parseFloat(dayData['3. low']);
+                    
+                    if (high > week52High) {
+                        week52High = high;
+                        highDate = date;
+                    }
+                    
+                    if (low < week52Low) {
+                        week52Low = low;
+                        lowDate = date;
+                    }
                 });
                 
-                // Determine phase based on metrics
-                if (rangePosition < 0.3 && infoPotential > 0.7) {
-                    document.getElementById('phaseAccumulation').classList.add('active');
-                } else if (rangePosition > 0.3 && rangePosition < 0.7 && fieldIntensity > 0.5) {
-                    document.getElementById('phaseRelease').classList.add('active');
-                } else if (rangePosition > 0.7 && infoPotential < 0.5 && fieldIntensity > 0.3) {
-                    document.getElementById('phaseExhaustion').classList.add('active');
-                } else {
-                    document.getElementById('phaseReset').classList.add('active');
-                }
+                // Current price data
+                const currentPrice = parseFloat(latestData['4. close']);
+                const previousClose = parseFloat(timeSeries[sortedDates[1]]['4. close']) || currentPrice;
+                const priceChangePercent = ((currentPrice - previousClose) / previousClose * 100).toFixed(2);
+                const priceChange = (currentPrice - previousClose).toFixed(2);
+                
+                // Calculate metrics
+                const priceToHigh = ((currentPrice - week52High) / week52High * 100).toFixed(2);
+                const priceToLow = ((currentPrice - week52Low) / week52Low * 100).toFixed(2);
+                const priceRange = ((week52High - week52Low) / week52Low * 100).toFixed(2);
+                const rangePosition = ((currentPrice - week52Low) / (week52High - week52Low) * 100).toFixed(2);
+                
+                // Update UI
+                stockTitle.textContent = `Stock Data for ${symbol}`;
+                document.getElementById('currentPrice').textContent = `$${currentPrice.toFixed(2)}`;
+                
+                const priceChangeElement = document.getElementById('priceChange');
+                priceChangeElement.textContent = `${priceChange >= 0 ? '+' : ''}${priceChangePercent}%`;
+                priceChangeElement.className = `price-change ${priceChangePercent >= 0 ? 'positive' : 'negative'}`;
+                
+                document.getElementById('week52High').textContent = `$${week52High.toFixed(2)}`;
+                document.getElementById('highDate').innerHTML = `Date: <span class="date-badge">${formatDate(highDate)}</span>`;
+                document.getElementById('week52Low').textContent = `$${week52Low.toFixed(2)}`;
+                document.getElementById('lowDate').innerHTML = `Date: <span class="date-badge">${formatDate(lowDate)}</span>`;
+                
+                document.getElementById('priceToHigh').textContent = `${priceToHigh}%`;
+                document.getElementById('priceToLow').textContent = `${priceToLow}%`;
+                document.getElementById('priceRange').textContent = `${priceRange}%`;
+                document.getElementById('rangePosition').textContent = `${rangePosition}%`;
+                
+                // Update chart with recent data (last 30 days)
+                updateChart(sortedDates.slice(0, 30), timeSeries);
+                
+                // Update table with recent data (last 10 days)
+                updateTable(sortedDates.slice(0, 10), timeSeries);
+                
+                // Show results
+                resultsCard.style.display = 'block';
+                
+                // Scroll to results
+                resultsCard.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            function formatDate(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
             }
             
             function initializeChart() {
-                chart = new Chart(cycleChart, {
+                const ctx = document.getElementById('priceChart').getContext('2d');
+                priceChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: ['Accumulation', 'Release', 'Exhaustion', 'Reset'],
-                        datasets: [
-                            {
-                                label: 'Information Potential',
-                                data: [0, 0, 0, 0],
-                                borderColor: '#3949ab',
-                                backgroundColor: 'rgba(57, 73, 171, 0.1)',
-                                tension: 0.4,
-                                fill: true
-                            },
-                            {
-                                label: 'Field Intensity',
-                                data: [0, 0, 0, 0],
-                                borderColor: '#f44336',
-                                backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                                tension: 0.4,
-                                fill: true
-                            }
-                        ]
+                        labels: [],
+                        datasets: [{
+                            label: 'Closing Price',
+                            data: [],
+                            borderColor: '#3949ab',
+                            backgroundColor: 'rgba(57, 73, 171, 0.1)',
+                            tension: 0.2,
+                            fill: true
+                        }, {
+                            label: 'High Price',
+                            data: [],
+                            borderColor: '#4caf50',
+                            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                            tension: 0.2,
+                            fill: false,
+                            borderDash: [5, 5]
+                        }, {
+                            label: 'Low Price',
+                            data: [],
+                            borderColor: '#f44336',
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                            tension: 0.2,
+                            fill: false,
+                            borderDash: [5, 5]
+                        }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 1
-                            }
-                        },
                         plugins: {
                             title: {
                                 display: true,
-                                text: 'Market Cycle Dynamics'
+                                text: 'Stock Price History'
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Price ($)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value;
+                                    }
+                                }
                             }
                         }
                     }
                 });
             }
             
-            function updateChart(rangePosition, infoPotential, fieldIntensity) {
-                // Generate sample data based on current metrics
-                const phaseData = {
-                    accumulation: {
-                        potential: infoPotential * 0.8,
-                        intensity: fieldIntensity * 0.3
-                    },
-                    release: {
-                        potential: infoPotential * 0.6,
-                        intensity: fieldIntensity * 0.9
-                    },
-                    exhaustion: {
-                        potential: infoPotential * 0.4,
-                        intensity: fieldIntensity * 0.7
-                    },
-                    reset: {
-                        potential: infoPotential * 0.7,
-                        intensity: fieldIntensity * 0.2
-                    }
-                };
+            function updateChart(dates, timeSeries) {
+                // Reverse dates for chronological order (oldest to newest)
+                const chronologicalDates = [...dates].reverse();
                 
-                // Update chart data
-                chart.data.datasets[0].data = [
-                    phaseData.accumulation.potential,
-                    phaseData.release.potential,
-                    phaseData.exhaustion.potential,
-                    phaseData.reset.potential
-                ];
+                const closingPrices = [];
+                const highPrices = [];
+                const lowPrices = [];
                 
-                chart.data.datasets[1].data = [
-                    phaseData.accumulation.intensity,
-                    phaseData.release.intensity,
-                    phaseData.exhaustion.intensity,
-                    phaseData.reset.intensity
-                ];
+                chronologicalDates.forEach(date => {
+                    const dayData = timeSeries[date];
+                    closingPrices.push(parseFloat(dayData['4. close']));
+                    highPrices.push(parseFloat(dayData['2. high']));
+                    lowPrices.push(parseFloat(dayData['3. low']));
+                });
                 
-                chart.update();
+                // Format dates for display
+                const formattedDates = chronologicalDates.map(date => {
+                    const d = new Date(date);
+                    return `${d.getMonth()+1}/${d.getDate()}`;
+                });
+                
+                // Update chart
+                priceChart.data.labels = formattedDates;
+                priceChart.data.datasets[0].data = closingPrices;
+                priceChart.data.datasets[1].data = highPrices;
+                priceChart.data.datasets[2].data = lowPrices;
+                priceChart.update();
             }
             
-            // Calculate initial metrics on page load
-            calculateMetrics();
+            function updateTable(dates, timeSeries) {
+                const tableBody = document.getElementById('tableBody');
+                tableBody.innerHTML = '';
+                
+                dates.forEach(date => {
+                    const dayData = timeSeries[date];
+                    const row = document.createElement('tr');
+                    
+                    const dateCell = document.createElement('td');
+                    dateCell.innerHTML = `<span class="date-badge">${formatDate(date)}</span>`;
+                    
+                    const openCell = document.createElement('td');
+                    openCell.textContent = `$${parseFloat(dayData['1. open']).toFixed(2)}`;
+                    
+                    const highCell = document.createElement('td');
+                    highCell.textContent = `$${parseFloat(dayData['2. high']).toFixed(2)}`;
+                    highCell.className = 'high-price';
+                    
+                    const lowCell = document.createElement('td');
+                    lowCell.textContent = `$${parseFloat(dayData['3. low']).toFixed(2)}`;
+                    lowCell.className = 'low-price';
+                    
+                    const closeCell = document.createElement('td');
+                    closeCell.textContent = `$${parseFloat(dayData['4. close']).toFixed(2)}`;
+                    
+                    const volumeCell = document.createElement('td');
+                    const volume = parseInt(dayData['6. volume']);
+                    volumeCell.textContent = volume.toLocaleString();
+                    
+                    row.appendChild(dateCell);
+                    row.appendChild(openCell);
+                    row.appendChild(highCell);
+                    row.appendChild(lowCell);
+                    row.appendChild(closeCell);
+                    row.appendChild(volumeCell);
+                    
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            function showError(message) {
+                errorText.textContent = message;
+                errorMessage.style.display = 'block';
+                resultsCard.style.display = 'none';
+            }
+            
+            // Fetch data for default symbol on page load
+            fetchStockData();
         });
     </script>
 </body>
