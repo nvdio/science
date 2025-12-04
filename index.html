@@ -221,49 +221,11 @@
             display: none;
         }
         
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-        
-        .data-table th, .data-table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        .data-table th {
-            background-color: var(--light);
-            color: var(--primary);
-            font-weight: 600;
-        }
-        
-        .data-table tr:hover {
-            background-color: #f9f9f9;
-        }
-        
-        .date-badge {
-            background-color: #e3f2fd;
-            color: var(--primary);
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.85rem;
-        }
-        
         .api-status {
             background-color: #f3e5f5;
             padding: 1rem;
             border-radius: 4px;
             margin-top: 1rem;
-        }
-        
-        .demo-note {
-            background-color: #e8f5e9;
-            padding: 1rem;
-            border-radius: 4px;
-            margin-top: 1rem;
-            border-left: 4px solid var(--success);
         }
         
         footer {
@@ -294,20 +256,9 @@
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <h1>Stock 52-Week High/Low Data</h1>
-            <p class="subtitle">Real-time stock data with 52-week price range analysis</p>
-        </div>
-    </header>
-    
     <div class="container">
         <div class="card">
             <h2 class="card-title">Stock Data Lookup</h2>
-            
-            <div class="demo-note">
-                <p><strong>Demo Mode Active:</strong> The default API key may be rate-limited. Try using symbols like IBM, AAPL, or MSFT, or use your own API key.</p>
-            </div>
             
             <div class="grid">
                 <div class="input-group">
@@ -319,12 +270,10 @@
                 <div class="input-group">
                     <label for="apiKeyInput">API Key (Optional)</label>
                     <input type="text" id="apiKeyInput" placeholder="Leave blank to use default">
-                    <small>Get your own free key from <a href="https://www.alphavantage.co/support/#api-key" target="_blank">Alpha Vantage</a></small>
                 </div>
             </div>
             
             <button id="fetchDataBtn">Fetch Stock Data</button>
-            <button id="demoDataBtn" style="background-color: var(--warning); margin-left: 10px;">Use Demo Data</button>
             
             <div class="loading" id="loadingIndicator">
                 <div class="spinner"></div>
@@ -336,12 +285,7 @@
             </div>
             
             <div class="api-status">
-                <p><strong>API Status:</strong> The free Alpha Vantage API has rate limits (5 requests per minute, 500 per day). If you encounter errors, try:</p>
-                <ol>
-                    <li>Waiting 60 seconds between requests</li>
-                    <li>Using your own API key</li>
-                    <li>Using the "Demo Data" button for testing</li>
-                </ol>
+                <p><strong>API Status:</strong> The free Alpha Vantage API has rate limits (5 requests per minute, 500 per day). If you encounter errors, wait 60 seconds between requests.</p>
             </div>
         </div>
         
@@ -394,44 +338,6 @@
             <div class="chart-container">
                 <canvas id="priceChart"></canvas>
             </div>
-            
-            <h3 class="card-title">Recent Trading Data</h3>
-            <table class="data-table" id="priceTable">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Open</th>
-                        <th>High</th>
-                        <th>Low</th>
-                        <th>Close</th>
-                        <th>Volume</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <!-- Data will be populated here -->
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="card">
-            <h2 class="card-title">How to Get Your Own API Key</h2>
-            <p>For unlimited access and to avoid rate limits:</p>
-            <ol>
-                <li>Go to <a href="https://www.alphavantage.co/support/#api-key" target="_blank">Alpha Vantage API Key page</a></li>
-                <li>Fill out the form with your name and email</li>
-                <li>Check your email for the API key</li>
-                <li>Enter the key in the "API Key" field above</li>
-            </ol>
-            
-            <h3 class="card-title" style="margin-top: 1.5rem;">Popular Stock Symbols</h3>
-            <div class="symbol-buttons" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1rem;">
-                <button class="symbol-btn" data-symbol="IBM" style="background-color: var(--primary); padding: 0.5rem 1rem;">IBM</button>
-                <button class="symbol-btn" data-symbol="AAPL" style="background-color: var(--primary); padding: 0.5rem 1rem;">AAPL</button>
-                <button class="symbol-btn" data-symbol="MSFT" style="background-color: var(--primary); padding: 0.5rem 1rem;">MSFT</button>
-                <button class="symbol-btn" data-symbol="GOOGL" style="background-color: var(--primary); padding: 0.5rem 1rem;">GOOGL</button>
-                <button class="symbol-btn" data-symbol="AMZN" style="background-color: var(--primary); padding: 0.5rem 1rem;">AMZN</button>
-                <button class="symbol-btn" data-symbol="TSLA" style="background-color: var(--primary); padding: 0.5rem 1rem;">TSLA</button>
-            </div>
         </div>
     </div>
     
@@ -445,7 +351,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const fetchDataBtn = document.getElementById('fetchDataBtn');
-            const demoDataBtn = document.getElementById('demoDataBtn');
             const symbolInput = document.getElementById('symbolInput');
             const apiKeyInput = document.getElementById('apiKeyInput');
             const loadingIndicator = document.getElementById('loadingIndicator');
@@ -457,12 +362,6 @@
             // Default API key from the provided file
             const DEFAULT_API_KEY = '2TQK3ASMKGWX9D47';
             
-            // Alternative API keys to try if default fails
-            const BACKUP_API_KEYS = [
-                'demo', // Special case for demo
-                DEFAULT_API_KEY
-            ];
-            
             // Chart variables
             let priceChart;
             
@@ -472,18 +371,6 @@
             // Button event listeners
             fetchDataBtn.addEventListener('click', function() {
                 fetchStockData();
-            });
-            
-            demoDataBtn.addEventListener('click', function() {
-                loadDemoData();
-            });
-            
-            // Add event listeners for symbol buttons
-            document.querySelectorAll('.symbol-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    symbolInput.value = this.getAttribute('data-symbol');
-                    fetchStockData();
-                });
             });
             
             // Allow Enter key to trigger data fetch
@@ -505,59 +392,12 @@
                 errorMessage.style.display = 'none';
                 resultsCard.style.display = 'none';
                 fetchDataBtn.disabled = true;
-                demoDataBtn.disabled = true;
                 
                 // Use custom API key if provided, otherwise use default
-                let apiKey = apiKeyInput.value.trim();
+                const apiKey = apiKeyInput.value.trim() || DEFAULT_API_KEY;
                 
-                if (!apiKey) {
-                    // Try multiple API keys if default fails
-                    tryApiKeys(symbol, BACKUP_API_KEYS, 0);
-                } else {
-                    // Use user-provided API key
-                    makeApiRequest(symbol, apiKey);
-                }
-            }
-            
-            function tryApiKeys(symbol, apiKeys, index) {
-                if (index >= apiKeys.length) {
-                    // All API keys failed, show error
-                    showError('All API keys failed. Please try again in a minute or use your own API key.');
-                    loadingIndicator.style.display = 'none';
-                    fetchDataBtn.disabled = false;
-                    demoDataBtn.disabled = false;
-                    return;
-                }
-                
-                const apiKey = apiKeys[index];
-                
-                if (apiKey === 'demo') {
-                    // Use demo data
-                    loadDemoData();
-                    return;
-                }
-                
-                makeApiRequest(symbol, apiKey, function(success) {
-                    if (!success && index < apiKeys.length - 1) {
-                        // Try next API key
-                        setTimeout(() => {
-                            tryApiKeys(symbol, apiKeys, index + 1);
-                        }, 1000);
-                    } else if (!success) {
-                        // All keys failed
-                        showError('API request failed. The API may be rate-limited. Try again in a minute or use the Demo Data button.');
-                        loadingIndicator.style.display = 'none';
-                        fetchDataBtn.disabled = false;
-                        demoDataBtn.disabled = false;
-                    }
-                });
-            }
-            
-            function makeApiRequest(symbol, apiKey, callback) {
                 // Construct API URL - Using the exact endpoint from the provided file
-                const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}&outputsize=compact`;
-                
-                console.log('Fetching from URL:', apiUrl);
+                const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${apiKey}&outputsize=compact`;
                 
                 // Fetch data from Alpha Vantage API
                 fetch(apiUrl)
@@ -568,8 +408,6 @@
                         return response.json();
                     })
                     .then(data => {
-                        console.log('API Response:', data);
-                        
                         // Check for API errors
                         if (data['Error Message']) {
                             throw new Error(data['Error Message']);
@@ -582,28 +420,15 @@
                         
                         // Process the data
                         processStockData(symbol, data);
-                        
-                        if (callback) callback(true);
                     })
                     .catch(error => {
                         console.error('Error fetching stock data:', error);
-                        
-                        // If using default key, try demo data
-                        if (apiKey === DEFAULT_API_KEY) {
-                            console.log('Default API failed, trying demo data...');
-                            if (callback) callback(false);
-                        } else {
-                            showError(`API Error: ${error.message}. Try using demo data or your own API key.`);
-                            if (callback) callback(false);
-                        }
+                        showError(`Failed to fetch stock data: ${error.message}. Please check the symbol and try again.`);
                     })
                     .finally(() => {
-                        // Re-enable buttons (unless we're trying another API key)
-                        if (!callback || callback && !callback.active) {
-                            loadingIndicator.style.display = 'none';
-                            fetchDataBtn.disabled = false;
-                            demoDataBtn.disabled = false;
-                        }
+                        // Hide loading indicator
+                        loadingIndicator.style.display = 'none';
+                        fetchDataBtn.disabled = false;
                     });
             }
             
@@ -727,15 +552,13 @@
                 updateUI(symbol, currentPrice, priceChangePercent, week52High, highDate, week52Low, lowDate, 
                         priceToHigh, priceToLow, priceRange, rangePosition);
                 
-                // Update chart and table
+                // Update chart
                 updateChart(sortedDates.slice(0, Math.min(sortedDates.length, 30)), timeSeries);
-                updateTable(sortedDates.slice(0, Math.min(sortedDates.length, 10)), timeSeries);
                 
                 // Show results
                 resultsCard.style.display = 'block';
                 loadingIndicator.style.display = 'none';
                 fetchDataBtn.disabled = false;
-                demoDataBtn.disabled = false;
                 
                 // Scroll to results
                 resultsCard.scrollIntoView({ behavior: 'smooth' });
@@ -760,74 +583,6 @@
                 document.getElementById('priceToLow').textContent = `${priceToLow}%`;
                 document.getElementById('priceRange').textContent = `${priceRange}%`;
                 document.getElementById('rangePosition').textContent = `${rangePosition}%`;
-            }
-            
-            function loadDemoData() {
-                const symbol = symbolInput.value.trim().toUpperCase() || 'IBM';
-                
-                // Show loading indicator
-                loadingIndicator.style.display = 'block';
-                errorMessage.style.display = 'none';
-                resultsCard.style.display = 'none';
-                fetchDataBtn.disabled = true;
-                demoDataBtn.disabled = true;
-                
-                // Generate realistic demo data
-                setTimeout(() => {
-                    // Create mock time series data
-                    const timeSeries = {};
-                    const today = new Date();
-                    
-                    // Generate 100 days of data
-                    for (let i = 0; i < 100; i++) {
-                        const date = new Date(today);
-                        date.setDate(date.getDate() - i);
-                        const dateStr = date.toISOString().split('T')[0];
-                        
-                        // Generate realistic price data around $150
-                        const basePrice = 150;
-                        const volatility = 0.02; // 2% daily volatility
-                        const randomFactor = 1 + (Math.random() * 2 - 1) * volatility;
-                        
-                        const close = i === 0 ? basePrice : timeSeries[prevDate]['4. close'] * randomFactor;
-                        const open = close * (1 + (Math.random() * 0.01 - 0.005));
-                        const high = Math.max(open, close) * (1 + Math.random() * 0.01);
-                        const low = Math.min(open, close) * (1 - Math.random() * 0.01);
-                        const volume = Math.floor(1000000 + Math.random() * 5000000);
-                        
-                        timeSeries[dateStr] = {
-                            '1. open': open.toFixed(2),
-                            '2. high': high.toFixed(2),
-                            '3. low': low.toFixed(2),
-                            '4. close': close.toFixed(2),
-                            '5. adjusted close': close.toFixed(2),
-                            '6. volume': volume.toString(),
-                            '7. dividend amount': '0.0000',
-                            '8. split coefficient': '1.0'
-                        };
-                        
-                        prevDate = dateStr;
-                    }
-                    
-                    // Create mock API response structure
-                    const mockData = {
-                        'Meta Data': {
-                            '1. Information': 'Daily Prices (open, high, low, close) and Volumes',
-                            '2. Symbol': symbol,
-                            '3. Last Refreshed': today.toISOString().split('T')[0],
-                            '4. Output Size': 'Compact',
-                            '5. Time Zone': 'US/Eastern'
-                        },
-                        'Time Series (Daily)': timeSeries
-                    };
-                    
-                    // Process the mock data
-                    processStockData(symbol, mockData);
-                    
-                    // Show demo notification
-                    showError('Using demo data. For real-time data, use your own API key.', 'info');
-                    
-                }, 500); // Small delay to show loading
             }
             
             function formatDate(dateString) {
@@ -931,74 +686,12 @@
                 priceChart.update();
             }
             
-            function updateTable(dates, timeSeries) {
-                const tableBody = document.getElementById('tableBody');
-                tableBody.innerHTML = '';
-                
-                dates.forEach(date => {
-                    const dayData = timeSeries[date];
-                    const row = document.createElement('tr');
-                    
-                    // Get all values
-                    const open = parseFloat(dayData['1. open']) || parseFloat(dayData['open']) || parseFloat(dayData['Open']) || 0;
-                    const high = parseFloat(dayData['2. high']) || parseFloat(dayData['high']) || parseFloat(dayData['High']) || 0;
-                    const low = parseFloat(dayData['3. low']) || parseFloat(dayData['low']) || parseFloat(dayData['Low']) || 0;
-                    const close = parseFloat(dayData['4. close']) || parseFloat(dayData['close']) || parseFloat(dayData['Close']) || 0;
-                    const volume = dayData['6. volume'] || dayData['volume'] || dayData['Volume'] || 'N/A';
-                    
-                    const dateCell = document.createElement('td');
-                    dateCell.innerHTML = `<span class="date-badge">${formatDate(date)}</span>`;
-                    
-                    const openCell = document.createElement('td');
-                    openCell.textContent = `$${open.toFixed(2)}`;
-                    
-                    const highCell = document.createElement('td');
-                    highCell.textContent = `$${high.toFixed(2)}`;
-                    highCell.className = 'high-price';
-                    
-                    const lowCell = document.createElement('td');
-                    lowCell.textContent = `$${low.toFixed(2)}`;
-                    lowCell.className = 'low-price';
-                    
-                    const closeCell = document.createElement('td');
-                    closeCell.textContent = `$${close.toFixed(2)}`;
-                    
-                    const volumeCell = document.createElement('td');
-                    if (volume !== 'N/A' && !isNaN(parseInt(volume))) {
-                        volumeCell.textContent = parseInt(volume).toLocaleString();
-                    } else {
-                        volumeCell.textContent = volume;
-                    }
-                    
-                    row.appendChild(dateCell);
-                    row.appendChild(openCell);
-                    row.appendChild(highCell);
-                    row.appendChild(lowCell);
-                    row.appendChild(closeCell);
-                    row.appendChild(volumeCell);
-                    
-                    tableBody.appendChild(row);
-                });
-            }
-            
-            function showError(message, type = 'error') {
+            function showError(message) {
                 errorText.textContent = message;
                 errorMessage.style.display = 'block';
-                
-                if (type === 'info') {
-                    errorMessage.style.backgroundColor = '#e8f5e9';
-                    errorMessage.style.color = '#2e7d32';
-                    errorMessage.style.borderLeft = '4px solid #4caf50';
-                } else {
-                    errorMessage.style.backgroundColor = '#ffebee';
-                    errorMessage.style.color = '#c62828';
-                    errorMessage.style.borderLeft = '4px solid #f44336';
-                }
-                
                 resultsCard.style.display = 'none';
                 loadingIndicator.style.display = 'none';
                 fetchDataBtn.disabled = false;
-                demoDataBtn.disabled = false;
                 
                 // Scroll to error
                 errorMessage.scrollIntoView({ behavior: 'smooth' });
