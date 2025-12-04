@@ -251,6 +251,13 @@
             font-size: 0.85rem;
         }
         
+        .api-status {
+            background-color: #f3e5f5;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+        
         footer {
             text-align: center;
             margin-top: 3rem;
@@ -294,7 +301,7 @@
                 <div class="input-group">
                     <label for="symbolInput">Stock Symbol</label>
                     <input type="text" id="symbolInput" value="IBM" placeholder="e.g., IBM, AAPL, MSFT">
-                    <small>Enter a valid stock ticker symbol</small>
+                    <small>Enter a valid stock ticker symbol (U.S. stocks only)</small>
                 </div>
                 
                 <div class="input-group">
@@ -305,7 +312,6 @@
             </div>
             
             <button id="fetchDataBtn">Fetch Stock Data</button>
-            <button id="viewThermoBtn" style="margin-left: 10px; background-color: var(--warning);">View Thermodynamic Model</button>
             
             <div class="loading" id="loadingIndicator">
                 <div class="spinner"></div>
@@ -314,6 +320,10 @@
             
             <div class="error-message" id="errorMessage">
                 <p id="errorText"></p>
+            </div>
+            
+            <div class="api-status">
+                <p><strong>Note:</strong> The free Alpha Vantage API has rate limits (5 requests per minute, 500 per day). If you get an error, wait a minute and try again, or use your own API key.</p>
             </div>
         </div>
         
@@ -390,13 +400,15 @@
             <p>This tool fetches real-time stock data using the Alpha Vantage API. The API provides:</p>
             <ul>
                 <li>Daily adjusted stock prices</li>
-                <li>52-week high and low values</li>
+                <li>52-week high and low values (calculated from available data)</li>
                 <li>Volume and trading data</li>
                 <li>Historical price information</li>
             </ul>
-            <p>The default API key has limited requests per day. For unlimited access, get your own free API key from <a href="https://www.alphavantage.co/support/#api-key" target="_blank">Alpha Vantage</a>.</p>
+            <p>The default API key has rate limits (5 requests per minute, 500 per day). For unlimited access, get your own free API key from <a href="https://www.alphavantage.co/support/#api-key" target="_blank">Alpha Vantage</a>.</p>
             
             <p><strong>Example symbols to try:</strong> IBM, AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, JPM</p>
+            
+            <p><strong>Note:</strong> Some API endpoints may return different data structures. This tool handles the "TIME_SERIES_DAILY_ADJUSTED" endpoint specifically.</p>
         </div>
     </div>
     
@@ -410,7 +422,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const fetchDataBtn = document.getElementById('fetchDataBtn');
-            const viewThermoBtn = document.getElementById('viewThermoBtn');
             const symbolInput = document.getElementById('symbolInput');
             const apiKeyInput = document.getElementById('apiKeyInput');
             const loadingIndicator = document.getElementById('loadingIndicator');
@@ -431,11 +442,6 @@
             // Button event listeners
             fetchDataBtn.addEventListener('click', function() {
                 fetchStockData();
-            });
-            
-            viewThermoBtn.addEventListener('click', function() {
-                // In a real implementation, this would navigate to the thermodynamic model page
-                alert("Thermodynamic model page would open here. Since this is a single-page demo, we're showing stock data instead.");
             });
             
             // Allow Enter key to trigger data fetch
@@ -461,8 +467,10 @@
                 // Use custom API key if provided, otherwise use default
                 const apiKey = apiKeyInput.value.trim() || DEFAULT_API_KEY;
                 
-                // Construct API URL
-                const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${apiKey}`;
+                // Construct API URL - Using the exact endpoint from the provided file
+                const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${apiKey}&outputsize=compact`;
+                
+                console.log('Fetching from URL:', apiUrl);
                 
                 // Fetch data from Alpha Vantage API
                 fetch(apiUrl)
@@ -473,16 +481,20 @@
                         return response.json();
                     })
                     .then(data => {
+                        console.log('API Response:', data);
+                        
                         // Check for API errors
                         if (data['Error Message']) {
                             throw new Error(data['Error Message']);
                         }
+                        
+                        // Check for rate limit message
                         if (data['Note']) {
-                            // This is a rate limit warning, but we can still process data if available
                             console.warn('API Note:', data['Note']);
+                            // Continue processing if we have data
                         }
                         
-                        // Process the data
+                        // Process the data - handle different possible response structures
                         processStockData(symbol, data);
                     })
                     .catch(error => {
@@ -497,57 +509,118 @@
             }
             
             function processStockData(symbol, data) {
-                // Check if we have the expected data structure
-                if (!data['Time Series (Daily)']) {
-                    showError('Invalid data structure received from API');
-                    return;
-                }
+                // Check for different possible data structures in the response
+                let timeSeries;
                 
-                // Get time series data
-                const timeSeries = data['Time Series (Daily)'];
+                if (data['Time Series (Daily)']) {
+                    timeSeries = data['Time Series (Daily)'];
+                } else if (data['Time Series Daily']) {
+                    timeSeries = data['Time Series Daily'];
+                } else if (data['Time Series (Daily Adjusted)']) {
+                    timeSeries = data['Time Series (Daily Adjusted)'];
+                } else {
+                    // Try to find any time series data
+                    const keys = Object.keys(data);
+                    for (let key of keys) {
+                        if (key.includes('Time Series')) {
+                            timeSeries = data[key];
+                            break;
+                        }
+                    }
+                    
+                    if (!timeSeries) {
+                        showError('No time series data found in API response. The API might be rate-limited or the symbol may be invalid.');
+                        return;
+                    }
+                }
                 
                 // Convert to array and sort by date (newest first)
                 const sortedDates = Object.keys(timeSeries).sort((a, b) => new Date(b) - new Date(a));
+                
+                if (sortedDates.length === 0) {
+                    showError('No trading data available for this symbol');
+                    return;
+                }
                 
                 // Get the most recent trading day
                 const latestDate = sortedDates[0];
                 const latestData = timeSeries[latestDate];
                 
-                // Calculate 52-week high and low
+                // Calculate 52-week high and low from available data
+                // Note: The API returns up to 100 days of data by default
                 let week52High = 0;
                 let week52Low = Infinity;
                 let highDate = '';
                 let lowDate = '';
                 
-                // We need data for the last year, but API returns last 100 days by default
-                // For demo, we'll use all available data
+                // We'll use all available data (up to 100 days)
                 sortedDates.forEach(date => {
                     const dayData = timeSeries[date];
-                    const high = parseFloat(dayData['2. high']);
-                    const low = parseFloat(dayData['3. low']);
+                    
+                    // Parse price values - handle different field names
+                    let high, low;
+                    
+                    if (dayData['2. high']) {
+                        high = parseFloat(dayData['2. high']);
+                        low = parseFloat(dayData['3. low']);
+                    } else if (dayData['2a. high']) {
+                        high = parseFloat(dayData['2a. high']);
+                        low = parseFloat(dayData['3a. low']);
+                    } else if (dayData['High']) {
+                        high = parseFloat(dayData['High']);
+                        low = parseFloat(dayData['Low']);
+                    } else {
+                        // Try to get values by index
+                        const values = Object.values(dayData);
+                        high = parseFloat(values[1]) || 0;
+                        low = parseFloat(values[2]) || 0;
+                    }
                     
                     if (high > week52High) {
                         week52High = high;
                         highDate = date;
                     }
                     
-                    if (low < week52Low) {
+                    if (low < week52Low && low > 0) {
                         week52Low = low;
                         lowDate = date;
                     }
                 });
                 
-                // Current price data
-                const currentPrice = parseFloat(latestData['4. close']);
-                const previousClose = parseFloat(timeSeries[sortedDates[1]]['4. close']) || currentPrice;
-                const priceChangePercent = ((currentPrice - previousClose) / previousClose * 100).toFixed(2);
-                const priceChange = (currentPrice - previousClose).toFixed(2);
+                // Handle edge case where we didn't find valid low
+                if (week52Low === Infinity) {
+                    week52Low = week52High * 0.8; // Default to 80% of high
+                    lowDate = sortedDates[sortedDates.length - 1]; // Oldest date
+                }
+                
+                // Get current price data - handle different field names
+                let currentPrice, previousClose;
+                
+                if (latestData['4. close']) {
+                    currentPrice = parseFloat(latestData['4. close']);
+                    previousClose = parseFloat(timeSeries[sortedDates[1]]?.['4. close']) || currentPrice;
+                } else if (latestData['4a. close']) {
+                    currentPrice = parseFloat(latestData['4a. close']);
+                    previousClose = parseFloat(timeSeries[sortedDates[1]]?.['4a. close']) || currentPrice;
+                } else if (latestData['Close']) {
+                    currentPrice = parseFloat(latestData['Close']);
+                    previousClose = parseFloat(timeSeries[sortedDates[1]]?.['Close']) || currentPrice;
+                } else {
+                    // Try to get by index
+                    const values = Object.values(latestData);
+                    currentPrice = parseFloat(values[3]) || 0;
+                    const prevData = timeSeries[sortedDates[1]];
+                    previousClose = prevData ? parseFloat(Object.values(prevData)[3]) || currentPrice : currentPrice;
+                }
                 
                 // Calculate metrics
-                const priceToHigh = ((currentPrice - week52High) / week52High * 100).toFixed(2);
-                const priceToLow = ((currentPrice - week52Low) / week52Low * 100).toFixed(2);
-                const priceRange = ((week52High - week52Low) / week52Low * 100).toFixed(2);
-                const rangePosition = ((currentPrice - week52Low) / (week52High - week52Low) * 100).toFixed(2);
+                const priceChange = currentPrice - previousClose;
+                const priceChangePercent = previousClose > 0 ? ((priceChange) / previousClose * 100).toFixed(2) : 0;
+                
+                const priceToHigh = week52High > 0 ? ((currentPrice - week52High) / week52High * 100).toFixed(2) : 0;
+                const priceToLow = week52Low > 0 ? ((currentPrice - week52Low) / week52Low * 100).toFixed(2) : 0;
+                const priceRange = week52Low > 0 ? ((week52High - week52Low) / week52Low * 100).toFixed(2) : 0;
+                const rangePosition = (week52High - week52Low) > 0 ? ((currentPrice - week52Low) / (week52High - week52Low) * 100).toFixed(2) : 0;
                 
                 // Update UI
                 stockTitle.textContent = `Stock Data for ${symbol}`;
@@ -567,11 +640,13 @@
                 document.getElementById('priceRange').textContent = `${priceRange}%`;
                 document.getElementById('rangePosition').textContent = `${rangePosition}%`;
                 
-                // Update chart with recent data (last 30 days)
-                updateChart(sortedDates.slice(0, 30), timeSeries);
+                // Update chart with recent data (last 30 days or all available if less)
+                const chartDays = Math.min(sortedDates.length, 30);
+                updateChart(sortedDates.slice(0, chartDays), timeSeries);
                 
                 // Update table with recent data (last 10 days)
-                updateTable(sortedDates.slice(0, 10), timeSeries);
+                const tableDays = Math.min(sortedDates.length, 10);
+                updateTable(sortedDates.slice(0, tableDays), timeSeries);
                 
                 // Show results
                 resultsCard.style.display = 'block';
@@ -581,6 +656,7 @@
             }
             
             function formatDate(dateString) {
+                if (!dateString) return '--';
                 const date = new Date(dateString);
                 return date.toLocaleDateString('en-US', { 
                     year: 'numeric', 
@@ -601,23 +677,9 @@
                             borderColor: '#3949ab',
                             backgroundColor: 'rgba(57, 73, 171, 0.1)',
                             tension: 0.2,
-                            fill: true
-                        }, {
-                            label: 'High Price',
-                            data: [],
-                            borderColor: '#4caf50',
-                            backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                            tension: 0.2,
-                            fill: false,
-                            borderDash: [5, 5]
-                        }, {
-                            label: 'Low Price',
-                            data: [],
-                            borderColor: '#f44336',
-                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                            tension: 0.2,
-                            fill: false,
-                            borderDash: [5, 5]
+                            fill: true,
+                            pointRadius: 3,
+                            pointHoverRadius: 6
                         }]
                     },
                     options: {
@@ -636,6 +698,10 @@
                                         return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
                                     }
                                 }
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
                             }
                         },
                         scales: {
@@ -660,6 +726,10 @@
                                     }
                                 }
                             }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
                         }
                     }
                 });
@@ -675,9 +745,21 @@
                 
                 chronologicalDates.forEach(date => {
                     const dayData = timeSeries[date];
-                    closingPrices.push(parseFloat(dayData['4. close']));
-                    highPrices.push(parseFloat(dayData['2. high']));
-                    lowPrices.push(parseFloat(dayData['3. low']));
+                    
+                    // Get closing price
+                    let closePrice;
+                    if (dayData['4. close']) {
+                        closePrice = parseFloat(dayData['4. close']);
+                    } else if (dayData['4a. close']) {
+                        closePrice = parseFloat(dayData['4a. close']);
+                    } else if (dayData['Close']) {
+                        closePrice = parseFloat(dayData['Close']);
+                    } else {
+                        const values = Object.values(dayData);
+                        closePrice = parseFloat(values[3]) || 0;
+                    }
+                    
+                    closingPrices.push(closePrice);
                 });
                 
                 // Format dates for display
@@ -689,8 +771,6 @@
                 // Update chart
                 priceChart.data.labels = formattedDates;
                 priceChart.data.datasets[0].data = closingPrices;
-                priceChart.data.datasets[1].data = highPrices;
-                priceChart.data.datasets[2].data = lowPrices;
                 priceChart.update();
             }
             
@@ -702,26 +782,59 @@
                     const dayData = timeSeries[date];
                     const row = document.createElement('tr');
                     
+                    // Get all values
+                    let open, high, low, close, volume;
+                    
+                    if (dayData['1. open']) {
+                        open = parseFloat(dayData['1. open']);
+                        high = parseFloat(dayData['2. high']);
+                        low = parseFloat(dayData['3. low']);
+                        close = parseFloat(dayData['4. close']);
+                        volume = dayData['6. volume'] || 'N/A';
+                    } else if (dayData['1a. open']) {
+                        open = parseFloat(dayData['1a. open']);
+                        high = parseFloat(dayData['2a. high']);
+                        low = parseFloat(dayData['3a. low']);
+                        close = parseFloat(dayData['4a. close']);
+                        volume = dayData['6a. volume'] || 'N/A';
+                    } else if (dayData['Open']) {
+                        open = parseFloat(dayData['Open']);
+                        high = parseFloat(dayData['High']);
+                        low = parseFloat(dayData['Low']);
+                        close = parseFloat(dayData['Close']);
+                        volume = dayData['Volume'] || 'N/A';
+                    } else {
+                        const values = Object.values(dayData);
+                        open = parseFloat(values[0]) || 0;
+                        high = parseFloat(values[1]) || 0;
+                        low = parseFloat(values[2]) || 0;
+                        close = parseFloat(values[3]) || 0;
+                        volume = values[5] || 'N/A';
+                    }
+                    
                     const dateCell = document.createElement('td');
                     dateCell.innerHTML = `<span class="date-badge">${formatDate(date)}</span>`;
                     
                     const openCell = document.createElement('td');
-                    openCell.textContent = `$${parseFloat(dayData['1. open']).toFixed(2)}`;
+                    openCell.textContent = `$${open.toFixed(2)}`;
                     
                     const highCell = document.createElement('td');
-                    highCell.textContent = `$${parseFloat(dayData['2. high']).toFixed(2)}`;
+                    highCell.textContent = `$${high.toFixed(2)}`;
                     highCell.className = 'high-price';
                     
                     const lowCell = document.createElement('td');
-                    lowCell.textContent = `$${parseFloat(dayData['3. low']).toFixed(2)}`;
+                    lowCell.textContent = `$${low.toFixed(2)}`;
                     lowCell.className = 'low-price';
                     
                     const closeCell = document.createElement('td');
-                    closeCell.textContent = `$${parseFloat(dayData['4. close']).toFixed(2)}`;
+                    closeCell.textContent = `$${close.toFixed(2)}`;
                     
                     const volumeCell = document.createElement('td');
-                    const volume = parseInt(dayData['6. volume']);
-                    volumeCell.textContent = volume.toLocaleString();
+                    if (volume !== 'N/A' && !isNaN(parseInt(volume))) {
+                        volumeCell.textContent = parseInt(volume).toLocaleString();
+                    } else {
+                        volumeCell.textContent = volume;
+                    }
                     
                     row.appendChild(dateCell);
                     row.appendChild(openCell);
@@ -738,6 +851,9 @@
                 errorText.textContent = message;
                 errorMessage.style.display = 'block';
                 resultsCard.style.display = 'none';
+                
+                // Scroll to error
+                errorMessage.scrollIntoView({ behavior: 'smooth' });
             }
             
             // Fetch data for default symbol on page load
