@@ -397,7 +397,7 @@
                 const apiKey = apiKeyInput.value.trim() || DEFAULT_API_KEY;
                 
                 // Construct API URL - Using the exact endpoint from the provided file
-                const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${apiKey}&outputsize=compact`;
+                const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${apiKey}`;
                 
                 // Fetch data from Alpha Vantage API
                 fetch(apiUrl)
@@ -408,6 +408,8 @@
                         return response.json();
                     })
                     .then(data => {
+                        console.log('API Response:', data);
+                        
                         // Check for API errors
                         if (data['Error Message']) {
                             throw new Error(data['Error Message']);
@@ -416,6 +418,11 @@
                         // Check for rate limit message
                         if (data['Note'] && data['Note'].includes('rate limit')) {
                             throw new Error('API rate limit exceeded. Please wait a minute.');
+                        }
+                        
+                        // Check if we have the time series data
+                        if (!data['Time Series (Daily)'] && !data['Time Series (Daily Adjusted)']) {
+                            throw new Error('No time series data found. The symbol may be invalid or market may be closed.');
                         }
                         
                         // Process the data
@@ -433,36 +440,8 @@
             }
             
             function processStockData(symbol, data) {
-                // Check for different possible data structures in the response
-                let timeSeries;
-                
-                // Try to find time series data
-                for (let key in data) {
-                    if (key.includes('Time Series') || key === 'Time Series (Daily)') {
-                        timeSeries = data[key];
-                        break;
-                    }
-                }
-                
-                // If still no time series, check for meta data indicating no data
-                if (!timeSeries && data['Meta Data']) {
-                    showError('No time series data available for this symbol.');
-                    return;
-                }
-                
-                if (!timeSeries) {
-                    // If we have data but no time series, it might be in a different format
-                    // Look for any object that contains date keys
-                    for (let key in data) {
-                        if (typeof data[key] === 'object' && data[key] !== null) {
-                            const firstValue = Object.values(data[key])[0];
-                            if (firstValue && typeof firstValue === 'object') {
-                                timeSeries = data[key];
-                                break;
-                            }
-                        }
-                    }
-                }
+                // Get time series data - try both possible keys
+                const timeSeries = data['Time Series (Daily)'] || data['Time Series (Daily Adjusted)'];
                 
                 if (!timeSeries) {
                     showError('No time series data found in API response. The API may be rate-limited.');
@@ -491,17 +470,9 @@
                 sortedDates.forEach(date => {
                     const dayData = timeSeries[date];
                     
-                    // Parse price values - handle different field names
-                    let high, low;
-                    
-                    // Try different possible field names
-                    high = parseFloat(dayData['2. high']) || 
-                           parseFloat(dayData['high']) || 
-                           parseFloat(dayData['High']) || 0;
-                    
-                    low = parseFloat(dayData['3. low']) || 
-                          parseFloat(dayData['low']) || 
-                          parseFloat(dayData['Low']) || 0;
+                    // Parse price values
+                    const high = parseFloat(dayData['2. high']) || 0;
+                    const low = parseFloat(dayData['3. low']) || 0;
                     
                     if (high > week52High && high > 0) {
                         week52High = high;
@@ -526,17 +497,13 @@
                 }
                 
                 // Get current price data
-                let currentPrice = parseFloat(latestData['4. close']) || 
-                                   parseFloat(latestData['close']) || 
-                                   parseFloat(latestData['Close']) || 0;
+                const currentPrice = parseFloat(latestData['4. close']) || 0;
                 
                 // Get previous close if available
                 let previousClose = currentPrice;
                 if (sortedDates.length > 1) {
                     const prevData = timeSeries[sortedDates[1]];
-                    previousClose = parseFloat(prevData['4. close']) || 
-                                    parseFloat(prevData['close']) || 
-                                    parseFloat(prevData['Close']) || currentPrice;
+                    previousClose = parseFloat(prevData['4. close']) || currentPrice;
                 }
                 
                 // Calculate metrics
@@ -667,9 +634,7 @@
                     const dayData = timeSeries[date];
                     
                     // Get closing price
-                    let closePrice = parseFloat(dayData['4. close']) || 
-                                     parseFloat(dayData['close']) || 
-                                     parseFloat(dayData['Close']) || 0;
+                    const closePrice = parseFloat(dayData['4. close']) || 0;
                     
                     closingPrices.push(closePrice);
                 });
