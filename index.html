@@ -192,31 +192,6 @@
             color: var(--accent-blue);
         }
 
-        .filings-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            color: var(--text-gray);
-        }
-
         .filing-type-10k {
             border-left: 4px solid var(--success-green);
         }
@@ -290,18 +265,6 @@
             to { transform: rotate(360deg); }
         }
 
-        .filing-details {
-            background: rgba(0, 0, 0, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 10px;
-            display: none;
-        }
-
-        .filing-details.active {
-            display: block;
-        }
-
         footer {
             text-align: center;
             margin-top: 50px;
@@ -312,10 +275,6 @@
         }
 
         @media (max-width: 768px) {
-            .filings-stats {
-                grid-template-columns: 1fr;
-            }
-            
             table {
                 font-size: 0.9rem;
             }
@@ -348,17 +307,6 @@
                         </button>
                     </div>
                 </div>
-                <div class="input-group">
-                    <label for="filingTypeFilter">Filter by Filing Type</label>
-                    <select id="filingTypeFilter">
-                        <option value="all">All Filing Types</option>
-                        <option value="10-K">Annual Report (10-K)</option>
-                        <option value="10-Q">Quarterly Report (10-Q)</option>
-                        <option value="8-K">Current Report (8-K)</option>
-                        <option value="DEF 14A">Proxy Statement (DEF 14A)</option>
-                        <option value="S-1">Registration Statement (S-1)</option>
-                    </select>
-                </div>
             </section>
 
             <div id="statusMessage" class="status"></div>
@@ -366,22 +314,6 @@
             <div id="currentTickerDisplay" class="current-ticker" style="display: none;">
                 <i class="fas fa-chart-bar"></i>
                 <span id="currentTickerText"></span>
-            </div>
-
-            <!-- Statistics Cards (Only Annual, Quarterly, Current Reports) -->
-            <div class="filings-stats" id="filingsStats" style="display: none;">
-                <div class="stat-card">
-                    <div class="stat-value" id="annualReports">0</div>
-                    <div class="stat-label">Annual Reports</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="quarterlyReports">0</div>
-                    <div class="stat-label">Quarterly Reports</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="currentReports">0</div>
-                    <div class="stat-label">Current Reports</div>
-                </div>
             </div>
 
             <!-- Filings Table -->
@@ -395,7 +327,6 @@
                                 <th>Type</th>
                                 <th>Title</th>
                                 <th>Access</th>
-                                <th>Details</th>
                             </tr>
                         </thead>
                         <tbody id="filingsTableBody">
@@ -418,29 +349,21 @@
             // DOM Elements
             const tickerInput = document.getElementById('tickerInput');
             const fetchFilingsBtn = document.getElementById('fetchFilingsBtn');
-            const filingTypeFilter = document.getElementById('filingTypeFilter');
             const statusMessage = document.getElementById('statusMessage');
             const currentTickerDisplay = document.getElementById('currentTickerDisplay');
             const currentTickerText = document.getElementById('currentTickerText');
-            const filingsStats = document.getElementById('filingsStats');
             const filingsTableContainer = document.getElementById('filingsTableContainer');
             const filingsTableBody = document.getElementById('filingsTableBody');
-
-            // Statistics elements (only 3 remain)
-            const annualReportsEl = document.getElementById('annualReports');
-            const quarterlyReportsEl = document.getElementById('quarterlyReports');
-            const currentReportsEl = document.getElementById('currentReports');
 
             // API Configuration
             const API_KEY = 'd4o4hopr01qtrbsipe20d4o4hopr01qtrbsipe2g';
             const BASE_URL = 'https://finnhub.io/api/v1/stock/filings';
             
-            // CapEdge base URL for real filings
-            const CAPEDGE_BASE_URL = 'https://capedge.com/filing/';
+            // SEC EDGAR Search base URL
+            const SEC_SEARCH_BASE_URL = 'https://www.sec.gov/edgar/search/';
 
             // Event Listeners
             fetchFilingsBtn.addEventListener('click', fetchFilings);
-            filingTypeFilter.addEventListener('change', filterFilings);
             tickerInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     fetchFilings();
@@ -483,7 +406,6 @@
                     
                     // Update UI
                     updateCurrentTickerDisplay(ticker);
-                    updateStatistics(allFilings);
                     updateTable(allFilings);
                     showStatus(`Showing 3 most recent filings for ${ticker}`, 'success');
 
@@ -498,7 +420,6 @@
                         // Take only most recent 3 filings
                         allFilings = allFilings.slice(0, 3);
                         updateCurrentTickerDisplay(ticker);
-                        updateStatistics(allFilings);
                         updateTable(allFilings);
                     }
                 } finally {
@@ -527,30 +448,13 @@
                 currentTickerDisplay.style.display = 'flex';
             }
 
-            function updateStatistics(filings) {
-                const annual = filings.filter(f => f.type.includes('10-K')).length;
-                const quarterly = filings.filter(f => f.type.includes('10-Q')).length;
-                const current = filings.filter(f => f.type.includes('8-K')).length;
-
-                annualReportsEl.textContent = annual;
-                quarterlyReportsEl.textContent = quarterly;
-                currentReportsEl.textContent = current;
-
-                filingsStats.style.display = 'grid';
-            }
-
-            function filterFilings() {
-                // Since we're only showing 3 most recent filings, filtering is simple
-                fetchFilings();
-            }
-
             function updateTable(filings) {
                 filingsTableBody.innerHTML = '';
                 
                 if (filings.length === 0) {
                     filingsTableBody.innerHTML = `
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 40px;">
+                            <td colspan="4" style="text-align: center; padding: 40px;">
                                 No recent filings found.
                             </td>
                         </tr>
@@ -575,61 +479,32 @@
                         day: 'numeric'
                     });
                     
-                    // Create real CapEdge link using the accession number if available
-                    let capEdgeLink = '#';
-                    if (filing.accessionNumber) {
-                        // Format accession number for CapEdge URL
-                        const formattedAccNum = filing.accessionNumber.replace(/-/g, '');
-                        capEdgeLink = `${CAPEDGE_BASE_URL}${formattedAccNum}`;
-                    } else {
-                        // Fallback to SEC search if no accession number
-                        capEdgeLink = `https://www.sec.gov/edgar/search/#/dateRange=custom&entityName=${filing.symbol}&startdt=${formattedDate}`;
-                    }
-                    
-                    // Create filing details
-                    const filingDetails = `
-                        <div class="filing-details" id="details-${index}">
-                            <p><strong>Symbol:</strong> ${filing.symbol}</p>
-                            <p><strong>Filing Date:</strong> ${formattedDate}</p>
-                            ${filing.reportDate ? `<p><strong>Report Date:</strong> ${filing.reportDate.toLocaleDateString()}</p>` : ''}
-                            ${filing.accessionNumber ? `<p><strong>Accession Number:</strong> ${filing.accessionNumber}</p>` : ''}
-                            <p><strong>Source:</strong> <a href="${capEdgeLink}" target="_blank" style="color: var(--accent-blue);">View on CapEdge</a></p>
-                        </div>
-                    `;
+                    // Create SEC EDGAR search URL with the company name and date
+                    const secSearchUrl = `${SEC_SEARCH_BASE_URL}#/dateRange=custom&entityName=${filing.symbol}&startdt=${formatDateForSEC(filing.date)}`;
                     
                     row.innerHTML = `
                         <td>${formattedDate}</td>
                         <td><span class="${filingClass}">${filing.type}</span></td>
                         <td>${filing.title}</td>
                         <td>
-                            <a href="${capEdgeLink}" target="_blank" class="filing-access">
-                                <i class="fas fa-external-link-alt"></i> View on CapEdge
+                            <a href="${secSearchUrl}" target="_blank" class="filing-access">
+                                <i class="fas fa-external-link-alt"></i> Search on SEC EDGAR
                             </a>
-                        </td>
-                        <td>
-                            <button class="btn" style="padding: 5px 10px; font-size: 0.8rem;" onclick="toggleDetails(${index})">
-                                <i class="fas fa-info-circle"></i> Details
-                            </button>
                         </td>
                     `;
                     
                     filingsTableBody.appendChild(row);
-                    // Add details div after the row
-                    const detailsDiv = document.createElement('tr');
-                    detailsDiv.innerHTML = `
-                        <td colspan="5">
-                            ${filingDetails}
-                        </td>
-                    `;
-                    filingsTableBody.appendChild(detailsDiv);
                 });
 
                 filingsTableContainer.style.display = 'block';
             }
 
-            function toggleDetails(index) {
-                const detailsDiv = document.getElementById(`details-${index}`);
-                detailsDiv.classList.toggle('active');
+            function formatDateForSEC(date) {
+                // Format date as YYYY-MM-DD for SEC search
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
             }
 
             function showStatus(message, type) {
@@ -666,28 +541,19 @@
                     const type = filingTypes[i % filingTypes.length];
                     const title = `${companyName} - ${type} Filing`;
                     
-                    // Generate a realistic accession number
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    const randomNum = String(1000000 + Math.floor(Math.random() * 9000000));
-                    
                     filings.push({
                         date: date,
                         type: type,
                         title: title,
                         link: '#',
                         symbol: ticker,
-                        accessionNumber: `${randomNum}-${String(year).slice(-2)}-${month}-${day}`,
+                        accessionNumber: '',
                         reportDate: new Date(date.getFullYear(), date.getMonth(), 1)
                     });
                 }
                 
                 return filings.sort((a, b) => b.date - a.date);
             }
-
-            // Make toggleDetails available globally
-            window.toggleDetails = toggleDetails;
         });
     </script>
 </body>
