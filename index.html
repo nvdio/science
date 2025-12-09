@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Filings History Tracker</title>
+    <title>Stock Filings</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -288,19 +288,17 @@
 <body>
     <div class="container">
         <header>
-            <img src="https://img.icons8.com/color/96/000000/stock.png" alt="Stock Logo" class="logo">
-            <h1>Stock Filings History Tracker</h1>
-            <p class="subtitle">Track SEC filings, financial reports, and regulatory documents for any publicly traded company</p>
+
         </header>
 
         <main>
             <!-- Control Panel -->
             <section class="card">
                 <div class="input-group">
-                    <label for="tickerInput">Enter Stock Ticker Symbol</label>
+                    <label for="tickerInput"></label>
                     <div class="control-panel">
                         <div class="input-group">
-                            <input type="text" id="tickerInput" placeholder="Enter ticker symbol (e.g., AAPL, MSFT, GOOGL)" maxlength="10" value="AAPL">
+                            <input type="text" id="tickerInput" placeholder="Enter ticker symbol (e.g., AAPL, MSFT, GOOGL)" maxlength="10" value="AMZN">
                         </div>
                         <button class="btn" id="fetchFilingsBtn">
                             <i class="fas fa-file-alt"></i> Fetch Latest Filings
@@ -318,7 +316,7 @@
 
             <!-- Filings Table -->
             <div class="card" id="filingsTableContainer" style="display: none;">
-                <h2>Most Recent 3 Filings</h2>
+                <h2>Filings</h2>
                 <div class="filings-table">
                     <table id="filingsTable">
                         <thead>
@@ -338,9 +336,7 @@
         </main>
 
         <footer>
-            <p>© 2024 Stock Filings Tracker. All rights reserved</p>
-            <p>Data provided by Finnhub.io API. This tool is for educational purposes only.</p>
-            <p>Disclaimer: This website is not affiliated with or endorsed by the U.S. Securities and Exchange Commission.</p>
+         
         </footer>
     </div>
 
