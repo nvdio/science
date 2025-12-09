@@ -276,13 +276,6 @@
             opacity: 0.9;
         }
 
-        .chart-container {
-            position: relative;
-            height: 300px;
-            width: 100%;
-            margin: 1.5rem 0;
-        }
-
         .loading {
             display: inline-block;
             width: 20px;
@@ -295,33 +288,6 @@
 
         @keyframes spin {
             to { transform: rotate(360deg); }
-        }
-
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .pagination-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: var(--text-light);
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .pagination-btn:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .pagination-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
         }
 
         .filing-details {
@@ -378,7 +344,7 @@
                             <input type="text" id="tickerInput" placeholder="Enter ticker symbol (e.g., AAPL, MSFT, GOOGL)" maxlength="10" value="AAPL">
                         </div>
                         <button class="btn" id="fetchFilingsBtn">
-                            <i class="fas fa-file-alt"></i> Fetch Filings
+                            <i class="fas fa-file-alt"></i> Fetch Latest Filings
                         </button>
                     </div>
                 </div>
@@ -402,12 +368,8 @@
                 <span id="currentTickerText"></span>
             </div>
 
-            <!-- Statistics Cards -->
+            <!-- Statistics Cards (Only Annual, Quarterly, Current Reports) -->
             <div class="filings-stats" id="filingsStats" style="display: none;">
-                <div class="stat-card">
-                    <div class="stat-value" id="totalFilings">0</div>
-                    <div class="stat-label">Total Filings</div>
-                </div>
                 <div class="stat-card">
                     <div class="stat-value" id="annualReports">0</div>
                     <div class="stat-label">Annual Reports</div>
@@ -422,17 +384,9 @@
                 </div>
             </div>
 
-            <!-- Filings Timeline Chart -->
-            <div class="card" id="timelineChartContainer" style="display: none;">
-                <h2>Filings Timeline</h2>
-                <div class="chart-container">
-                    <canvas id="filingsTimelineChart"></canvas>
-                </div>
-            </div>
-
             <!-- Filings Table -->
             <div class="card" id="filingsTableContainer" style="display: none;">
-                <h2>Recent SEC Filings</h2>
+                <h2>Most Recent 3 Filings</h2>
                 <div class="filings-table">
                     <table id="filingsTable">
                         <thead>
@@ -448,23 +402,6 @@
                             <!-- Filings will be inserted here -->
                         </tbody>
                     </table>
-                </div>
-                <div class="pagination" id="pagination" style="display: none;">
-                    <button class="pagination-btn" id="prevPageBtn" disabled>
-                        <i class="fas fa-chevron-left"></i> Previous
-                    </button>
-                    <span id="pageInfo">Page 1 of 1</span>
-                    <button class="pagination-btn" id="nextPageBtn" disabled>
-                        Next <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Filing Type Distribution -->
-            <div class="card" id="distributionChartContainer" style="display: none;">
-                <h2>Filing Type Distribution</h2>
-                <div class="chart-container">
-                    <canvas id="filingTypeChart"></canvas>
                 </div>
             </div>
         </main>
@@ -488,32 +425,18 @@
             const filingsStats = document.getElementById('filingsStats');
             const filingsTableContainer = document.getElementById('filingsTableContainer');
             const filingsTableBody = document.getElementById('filingsTableBody');
-            const timelineChartContainer = document.getElementById('timelineChartContainer');
-            const distributionChartContainer = document.getElementById('distributionChartContainer');
-            const pagination = document.getElementById('pagination');
-            const prevPageBtn = document.getElementById('prevPageBtn');
-            const nextPageBtn = document.getElementById('nextPageBtn');
-            const pageInfo = document.getElementById('pageInfo');
 
-            // Statistics elements
-            const totalFilingsEl = document.getElementById('totalFilings');
+            // Statistics elements (only 3 remain)
             const annualReportsEl = document.getElementById('annualReports');
             const quarterlyReportsEl = document.getElementById('quarterlyReports');
             const currentReportsEl = document.getElementById('currentReports');
 
-            // Charts
-            let timelineChart;
-            let distributionChart;
-
-            // Pagination
-            let currentPage = 1;
-            const itemsPerPage = 10;
-            let allFilings = [];
-            let filteredFilings = [];
-
             // API Configuration
             const API_KEY = 'd4o4hopr01qtrbsipe20d4o4hopr01qtrbsipe2g';
             const BASE_URL = 'https://finnhub.io/api/v1/stock/filings';
+            
+            // CapEdge base URL for real filings
+            const CAPEDGE_BASE_URL = 'https://capedge.com/filing/';
 
             // Event Listeners
             fetchFilingsBtn.addEventListener('click', fetchFilings);
@@ -523,8 +446,6 @@
                     fetchFilings();
                 }
             });
-            prevPageBtn.addEventListener('click', () => changePage(-1));
-            nextPageBtn.addEventListener('click', () => changePage(1));
 
             // Initialize with AAPL
             setTimeout(() => fetchFilings(), 1000);
@@ -537,7 +458,7 @@
                     return;
                 }
 
-                showStatus(`Fetching filings for ${ticker}...`, 'info');
+                showStatus(`Fetching latest filings for ${ticker}...`, 'info');
                 fetchFilingsBtn.disabled = true;
                 fetchFilingsBtn.innerHTML = '<div class="loading"></div> Loading...';
 
@@ -554,15 +475,17 @@
                         throw new Error('No filings data returned from Finnhub');
                     }
 
-                    // Process the filings data
-                    allFilings = processFilingsData(data);
-                    filteredFilings = [...allFilings];
+                    // Process the filings data - take only most recent filings
+                    let allFilings = processFilingsData(data);
+                    
+                    // Filter to show only the most recent 3 filings
+                    allFilings = allFilings.slice(0, 3);
                     
                     // Update UI
                     updateCurrentTickerDisplay(ticker);
                     updateStatistics(allFilings);
-                    filterFilings();
-                    showStatus(`Successfully loaded ${allFilings.length} filings for ${ticker}`, 'success');
+                    updateTable(allFilings);
+                    showStatus(`Showing 3 most recent filings for ${ticker}`, 'success');
 
                 } catch (error) {
                     console.error('Error fetching filings:', error);
@@ -571,15 +494,16 @@
                     // Fallback to sample data for demonstration
                     if (ticker === 'AAPL' || ticker === 'MSFT' || ticker === 'GOOGL') {
                         showStatus('Using sample data for demonstration purposes', 'info');
-                        allFilings = getSampleFilingsData(ticker);
-                        filteredFilings = [...allFilings];
+                        let allFilings = getSampleFilingsData(ticker);
+                        // Take only most recent 3 filings
+                        allFilings = allFilings.slice(0, 3);
                         updateCurrentTickerDisplay(ticker);
                         updateStatistics(allFilings);
-                        filterFilings();
+                        updateTable(allFilings);
                     }
                 } finally {
                     fetchFilingsBtn.disabled = false;
-                    fetchFilingsBtn.innerHTML = '<i class="fas fa-file-alt"></i> Fetch Filings';
+                    fetchFilingsBtn.innerHTML = '<i class="fas fa-file-alt"></i> Fetch Latest Filings';
                 }
             }
 
@@ -594,21 +518,20 @@
                         accessionNumber: filing.accessionNumber || '',
                         reportDate: filing.reportDate ? new Date(filing.reportDate) : null
                     }))
-                    .sort((a, b) => b.date - a.date); // Sort by date, newest first
+                    .sort((a, b) => b.date - a.date) // Sort by date, newest first
+                    .slice(0, 3); // Take only the 3 most recent filings
             }
 
             function updateCurrentTickerDisplay(ticker) {
-                currentTickerText.textContent = `Currently viewing filings for: ${ticker}`;
+                currentTickerText.textContent = `Currently viewing latest filings for: ${ticker}`;
                 currentTickerDisplay.style.display = 'flex';
             }
 
             function updateStatistics(filings) {
-                const total = filings.length;
                 const annual = filings.filter(f => f.type.includes('10-K')).length;
                 const quarterly = filings.filter(f => f.type.includes('10-Q')).length;
                 const current = filings.filter(f => f.type.includes('8-K')).length;
 
-                totalFilingsEl.textContent = total;
                 annualReportsEl.textContent = annual;
                 quarterlyReportsEl.textContent = quarterly;
                 currentReportsEl.textContent = current;
@@ -617,35 +540,18 @@
             }
 
             function filterFilings() {
-                const filterType = filingTypeFilter.value;
-                
-                if (filterType === 'all') {
-                    filteredFilings = [...allFilings];
-                } else {
-                    filteredFilings = allFilings.filter(filing => 
-                        filing.type.includes(filterType) || 
-                        (filterType === '10-K' && filing.type === '10-K') ||
-                        (filterType === '10-Q' && filing.type === '10-Q') ||
-                        (filterType === '8-K' && filing.type === '8-K') ||
-                        (filterType === 'DEF 14A' && filing.type.includes('DEF 14A')) ||
-                        (filterType === 'S-1' && filing.type.includes('S-1'))
-                    );
-                }
-
-                currentPage = 1;
-                updateTable();
-                updateCharts();
-                updatePagination();
+                // Since we're only showing 3 most recent filings, filtering is simple
+                fetchFilings();
             }
 
-            function updateTable() {
+            function updateTable(filings) {
                 filingsTableBody.innerHTML = '';
                 
-                if (filteredFilings.length === 0) {
+                if (filings.length === 0) {
                     filingsTableBody.innerHTML = `
                         <tr>
                             <td colspan="5" style="text-align: center; padding: 40px;">
-                                No filings found for the selected filter.
+                                No recent filings found.
                             </td>
                         </tr>
                     `;
@@ -653,11 +559,7 @@
                     return;
                 }
 
-                const startIndex = (currentPage - 1) * itemsPerPage;
-                const endIndex = startIndex + itemsPerPage;
-                const pageFilings = filteredFilings.slice(startIndex, endIndex);
-
-                pageFilings.forEach((filing, index) => {
+                filings.forEach((filing, index) => {
                     const row = document.createElement('tr');
                     
                     // Determine CSS class based on filing type
@@ -673,6 +575,17 @@
                         day: 'numeric'
                     });
                     
+                    // Create real CapEdge link using the accession number if available
+                    let capEdgeLink = '#';
+                    if (filing.accessionNumber) {
+                        // Format accession number for CapEdge URL
+                        const formattedAccNum = filing.accessionNumber.replace(/-/g, '');
+                        capEdgeLink = `${CAPEDGE_BASE_URL}${formattedAccNum}`;
+                    } else {
+                        // Fallback to SEC search if no accession number
+                        capEdgeLink = `https://www.sec.gov/edgar/search/#/dateRange=custom&entityName=${filing.symbol}&startdt=${formattedDate}`;
+                    }
+                    
                     // Create filing details
                     const filingDetails = `
                         <div class="filing-details" id="details-${index}">
@@ -680,6 +593,7 @@
                             <p><strong>Filing Date:</strong> ${formattedDate}</p>
                             ${filing.reportDate ? `<p><strong>Report Date:</strong> ${filing.reportDate.toLocaleDateString()}</p>` : ''}
                             ${filing.accessionNumber ? `<p><strong>Accession Number:</strong> ${filing.accessionNumber}</p>` : ''}
+                            <p><strong>Source:</strong> <a href="${capEdgeLink}" target="_blank" style="color: var(--accent-blue);">View on CapEdge</a></p>
                         </div>
                     `;
                     
@@ -688,8 +602,8 @@
                         <td><span class="${filingClass}">${filing.type}</span></td>
                         <td>${filing.title}</td>
                         <td>
-                            <a href="${filing.link}" target="_blank" class="filing-access">
-                                <i class="fas fa-external-link-alt"></i> View
+                            <a href="${capEdgeLink}" target="_blank" class="filing-access">
+                                <i class="fas fa-external-link-alt"></i> View on CapEdge
                             </a>
                         </td>
                         <td>
@@ -718,208 +632,6 @@
                 detailsDiv.classList.toggle('active');
             }
 
-            function updatePagination() {
-                const totalPages = Math.ceil(filteredFilings.length / itemsPerPage);
-                
-                if (totalPages <= 1) {
-                    pagination.style.display = 'none';
-                    return;
-                }
-                
-                pagination.style.display = 'flex';
-                prevPageBtn.disabled = currentPage === 1;
-                nextPageBtn.disabled = currentPage === totalPages;
-                pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-            }
-
-            function changePage(direction) {
-                const totalPages = Math.ceil(filteredFilings.length / itemsPerPage);
-                const newPage = currentPage + direction;
-                
-                if (newPage >= 1 && newPage <= totalPages) {
-                    currentPage = newPage;
-                    updateTable();
-                    updatePagination();
-                    // Scroll to top of table
-                    filingsTableContainer.scrollIntoView({ behavior: 'smooth' });
-                }
-            }
-
-            function updateCharts() {
-                updateTimelineChart();
-                updateDistributionChart();
-            }
-
-            function updateTimelineChart() {
-                const canvas = document.getElementById('filingsTimelineChart');
-                const ctx = canvas.getContext('2d');
-                
-                // Destroy existing chart if it exists
-                if (timelineChart) {
-                    timelineChart.destroy();
-                }
-                
-                // Group filings by month
-                const filingsByMonth = {};
-                const last12Months = [];
-                
-                // Generate last 12 months
-                for (let i = 11; i >= 0; i--) {
-                    const date = new Date();
-                    date.setMonth(date.getMonth() - i);
-                    const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-                    last12Months.push(monthKey);
-                    filingsByMonth[monthKey] = 0;
-                }
-                
-                // Count filings per month
-                filteredFilings.forEach(filing => {
-                    const monthKey = filing.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-                    if (filingsByMonth.hasOwnProperty(monthKey)) {
-                        filingsByMonth[monthKey]++;
-                    }
-                });
-                
-                // Prepare data
-                const labels = last12Months;
-                const data = labels.map(month => filingsByMonth[month] || 0);
-                
-                timelineChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Number of Filings',
-                            data: data,
-                            borderColor: '#0077ff',
-                            backgroundColor: 'rgba(0, 119, 255, 0.1)',
-                            tension: 0.4,
-                            fill: true,
-                            pointBackgroundColor: '#0077ff',
-                            pointBorderColor: '#ffffff',
-                            pointBorderWidth: 2,
-                            pointRadius: 4,
-                            pointHoverRadius: 6
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Filings Over Last 12 Months',
-                                color: '#f8f9fa',
-                                font: {
-                                    size: 16,
-                                    weight: 'bold'
-                                }
-                            },
-                            legend: {
-                                labels: {
-                                    color: '#f8f9fa'
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)'
-                                },
-                                ticks: {
-                                    color: '#f8f9fa'
-                                }
-                            },
-                            y: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)'
-                                },
-                                ticks: {
-                                    color: '#f8f9fa',
-                                    precision: 0
-                                }
-                            }
-                        }
-                    }
-                });
-                
-                timelineChartContainer.style.display = 'block';
-            }
-
-            function updateDistributionChart() {
-                const canvas = document.getElementById('filingTypeChart');
-                const ctx = canvas.getContext('2d');
-                
-                // Destroy existing chart if it exists
-                if (distributionChart) {
-                    distributionChart.destroy();
-                }
-                
-                // Count filings by type
-                const typeCounts = {};
-                filteredFilings.forEach(filing => {
-                    const type = getFilingCategory(filing.type);
-                    typeCounts[type] = (typeCounts[type] || 0) + 1;
-                });
-                
-                // Prepare data
-                const labels = Object.keys(typeCounts);
-                const data = Object.values(typeCounts);
-                const backgroundColors = [
-                    'rgba(40, 167, 69, 0.7)',   // 10-K - green
-                    'rgba(0, 119, 255, 0.7)',   // 10-Q - blue
-                    'rgba(255, 152, 0, 0.7)',   // 8-K - orange
-                    'rgba(108, 117, 125, 0.7)', // Other - gray
-                    'rgba(111, 66, 193, 0.7)'   // DEF 14A - purple
-                ];
-                
-                distributionChart = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: data,
-                            backgroundColor: backgroundColors.slice(0, labels.length),
-                            borderColor: 'rgba(255, 255, 255, 0.2)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Filing Type Distribution',
-                                color: '#f8f9fa',
-                                font: {
-                                    size: 16,
-                                    weight: 'bold'
-                                }
-                            },
-                            legend: {
-                                position: 'right',
-                                labels: {
-                                    color: '#f8f9fa'
-                                }
-                            }
-                        }
-                    }
-                });
-                
-                distributionChartContainer.style.display = 'block';
-            }
-
-            function getFilingCategory(type) {
-                if (type.includes('10-K')) return 'Annual Reports (10-K)';
-                if (type.includes('10-Q')) return 'Quarterly Reports (10-Q)';
-                if (type.includes('8-K')) return 'Current Reports (8-K)';
-                if (type.includes('DEF 14A')) return 'Proxy Statements (DEF 14A)';
-                if (type.includes('S-1')) return 'Registration (S-1)';
-                return 'Other Filings';
-            }
-
             function showStatus(message, type) {
                 statusMessage.textContent = message;
                 statusMessage.className = 'status ' + type;
@@ -932,7 +644,7 @@
                 }
             }
 
-            // Sample data for demonstration
+            // Sample data for demonstration (3 most recent filings only)
             function getSampleFilingsData(ticker) {
                 const companies = {
                     'AAPL': 'Apple Inc.',
@@ -943,24 +655,30 @@
                 const companyName = companies[ticker] || `${ticker} Corporation`;
                 const currentDate = new Date();
                 
-                // Generate sample filings
+                // Generate only 3 sample filings (most recent)
                 const filings = [];
-                const filingTypes = ['10-K', '10-Q', '8-K', 'DEF 14A', 'S-1'];
+                const filingTypes = ['10-K', '10-Q', '8-K'];
                 
-                for (let i = 0; i < 45; i++) {
+                for (let i = 0; i < 3; i++) {
                     const date = new Date();
-                    date.setMonth(date.getMonth() - Math.floor(i / 4));
+                    date.setMonth(date.getMonth() - i);
                     
-                    const type = filingTypes[Math.floor(Math.random() * filingTypes.length)];
+                    const type = filingTypes[i % filingTypes.length];
                     const title = `${companyName} - ${type} Filing`;
+                    
+                    // Generate a realistic accession number
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const randomNum = String(1000000 + Math.floor(Math.random() * 9000000));
                     
                     filings.push({
                         date: date,
                         type: type,
                         title: title,
-                        link: 'https://www.sec.gov/edgar/searchedgar/companysearch.html',
+                        link: '#',
                         symbol: ticker,
-                        accessionNumber: `000${1000000 + i}-${String(date.getFullYear()).slice(-2)}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+                        accessionNumber: `${randomNum}-${String(year).slice(-2)}-${month}-${day}`,
                         reportDate: new Date(date.getFullYear(), date.getMonth(), 1)
                     });
                 }
